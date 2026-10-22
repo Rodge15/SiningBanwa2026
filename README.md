@@ -37,6 +37,16 @@ Seats, reservations, payments, tickets, and SMS are later phases.
 - An administrator CSV download of customer name, email, and phone
 - No new database migration, and no reservations, payments, tickets, or SMS
 
+## What Phase 5 includes
+
+- A seat layout for each event: sections, rows, and clickable seat boxes
+- Section default prices and optional per-seat prices, in Philippine pesos
+- Seat colors for available, awaiting payment, paid, on hold, and blocked
+- The same saved layout on the staff designer and the public event page
+- A database function that refuses to change a reserved, sold, or on-hold seat
+- A poster preview page with Back and Close, so the picture is not a dead end
+- No reservations, seat holds, payments, tickets, or SMS
+
 ## 1. Install the tools
 
 Node.js LTS and the Supabase CLI should already be installed. Check them:
@@ -140,6 +150,20 @@ where email = 'you@example.com';
 
 Use `staff`, `venue`, or `customer` instead of `administrator` for other roles.
 
+### Phase 5 database (run after Phase 3)
+
+Run [supabase/migrations/20261023120000_create_seat_layouts.sql](supabase/migrations/20261023120000_create_seat_layouts.sql) in the Supabase **SQL Editor**: paste the whole file and click **Run**. It only adds seat tables and `save_event_layout`. It does not change events or accounts. Do not run it twice.
+
+If you marked a seat reserved or sold while testing and need to undo that before real bookings exist, run this once and replace the title and label:
+
+```sql
+update public.event_seats
+set status = 'available',
+    price_override = null
+where label = 'A1'
+  and event_id = (select id from public.events where title = 'Your event title');
+```
+
 ## 6. Test Phase 3
 
 1. Sign up with a new email. The form now asks for a full name. Confirm the email, then log in.
@@ -162,6 +186,18 @@ No new SQL. Phase 3 already stores the phone number.
 6. Change the password with the correct current password. Log in with the new one.
 7. As a customer, open `/admin/customers/export`. It must refuse you.
 8. As an administrator, open **Users** and click **Download customer contacts**. The file has `name`, `email`, and `phone` for customer accounts only.
+
+## 8. Test Phase 5
+
+1. Run the Phase 5 SQL file in the Supabase SQL Editor, then refresh the app.
+2. Log in as an administrator or staff member. Open **Manage events**, then **Seats**.
+3. Add two sections with different default prices. Click empty boxes to add seats. Set one seat's own price, block one seat, and mark one seat reserved.
+4. Click **Save layout**, then refresh. The labels, places, and prices must match what you saved.
+5. Click **Preview layout**. It must show the same colors and prices, with no booking button.
+6. Try to delete or rename the reserved seat and save again. The save must be rejected, and the old layout must stay.
+7. Publish the event. Log out and open the public event page. The same layout and prices must be visible. A draft event's seats must not be.
+8. Log in as a customer and open `/events/manage`. It must be refused.
+9. Open **View poster**. Use **Back** and **Close**. Both must leave the picture. Opening the poster address directly in the browser must not dump you on the storage image with no way back.
 
 ## 5. Test events
 

@@ -64,6 +64,9 @@ async function ManageEvents({ searchParams }) {
                     <Link href={`/events/manage/${event.id}`} className="text-brand hover:underline">
                       Edit
                     </Link>
+                    <Link href={`/events/manage/${event.id}/seats`} className="ml-3 text-brand hover:underline">
+                      Seats
+                    </Link>
                   </td>
                 </tr>
               ))}

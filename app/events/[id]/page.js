@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { SeatMap } from "@/components/SeatMap";
 import { eventSetupMessage, getVisibleEvent, isMissingEventTable } from "@/lib/events";
 import { formatManilaDateTime, isUuid } from "@/lib/eventRules";
+import { getEventLayout, isMissingSeatTable } from "@/lib/seats";
 import { getPublicSupabaseEnv } from "@/lib/supabase/env";
 
 export const metadata = {
@@ -39,12 +41,18 @@ async function EventDetails({ params }) {
     notFound();
   }
 
+  const layout = await getEventLayout(data.id);
+  const seatError = layout.error && !isMissingSeatTable(layout.error);
+
   return (
     <article className="overflow-hidden rounded-2xl border border-line bg-card shadow-sm">
       {data.poster_path ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={`/events/${data.id}/poster`} alt="" className="max-h-96 w-full object-cover" />
-            ) : null}
+        <Link href={`/events/${data.id}/poster/view`} className="block">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`/events/${data.id}/poster`} alt="" className="max-h-96 w-full object-cover" />
+          <span className="sr-only">View poster</span>
+        </Link>
+      ) : null}
       <div className="space-y-4 p-6">
         <p className="text-sm font-medium uppercase tracking-wide text-brand">Published event</p>
         <h1 className="text-3xl font-semibold">{data.title}</h1>
@@ -54,6 +62,22 @@ async function EventDetails({ params }) {
           {data.venue}
         </p>
         <p className="whitespace-pre-wrap leading-7">{data.description}</p>
+        {data.poster_path ? (
+          <p>
+            <Link href={`/events/${data.id}/poster/view`} className="text-sm text-brand hover:underline">
+              View poster
+            </Link>
+          </p>
+        ) : null}
+        <div className="space-y-3 border-t border-line pt-4">
+          <h2 className="text-xl font-semibold">Seating layout</h2>
+          <p className="text-sm text-muted">Prices are set by the organizer. Seat booking is not open on this page.</p>
+          {seatError ? <p className="text-sm text-red-900">The seating layout could not be loaded.</p> : null}
+          {!layout.error && layout.data.sections.length === 0 ? (
+            <p className="text-sm text-muted">No seating layout has been saved for this event yet.</p>
+          ) : null}
+          {!layout.error && layout.data.sections.length > 0 ? <SeatMap sections={layout.data.sections} /> : null}
+        </div>
       </div>
     </article>
   );

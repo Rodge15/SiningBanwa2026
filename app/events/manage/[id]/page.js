@@ -48,18 +48,30 @@ async function EditEvent({ params, searchParams }) {
             <QueryMessage searchParams={searchParams} />
           </Suspense>
           {data.poster_path ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={`/events/${data.id}/poster`}
-                        alt=""
-                        className="mb-4 h-48 w-full rounded-xl object-cover"
-                      />
-                    ) : null}
+            <p className="mb-4">
+              <Link href={`/events/${data.id}/poster/view`} className="block">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`/events/${data.id}/poster`}
+                  alt=""
+                  className="h-48 w-full rounded-xl object-cover"
+                />
+                <span className="mt-2 inline-block text-sm text-brand hover:underline">View poster</span>
+              </Link>
+            </p>
+          ) : null}
           <EventForm action={updateEvent} event={data} submitLabel="Save details" />
         </div>
       </div>
       <aside className="h-fit rounded-2xl border border-line bg-card p-6 shadow-sm">
-        <h2 className="text-lg font-semibold">Status</h2>
+        <h2 className="text-lg font-semibold">Seats</h2>
+        <p className="mt-2 text-sm leading-6 text-muted">
+          Design the grid, prices, and blocked seats before bookings open.
+        </p>
+        <Link href={`/events/manage/${data.id}/seats`} className={`${buttonClass} mt-4 w-full`}>
+          Design seats
+        </Link>
+        <h2 className="mt-8 text-lg font-semibold">Status</h2>
         <p className="mt-2 text-sm leading-6 text-muted">
           Publish makes the event public. Cancel keeps the record and hides it from guests.
         </p>

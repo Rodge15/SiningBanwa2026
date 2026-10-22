@@ -5,11 +5,20 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getVisibleEvent } from "@/lib/events";
 import { isUuid } from "@/lib/eventRules";
 
-export async function GET(_request, { params }) {
+export async function GET(request, { params }) {
   const { id } = await params;
 
   if (!isUuid(id)) {
     return new Response("Not found", { status: 404 });
+  }
+
+  // A normal page visit must land inside the app, with Back and Close.
+  // An <img> request asks for an image and still receives the signed poster.
+  const dest = request.headers.get("sec-fetch-dest");
+  const accept = request.headers.get("accept") || "";
+
+  if (dest === "document" || (!dest && accept.includes("text/html"))) {
+    return NextResponse.redirect(new URL(`/events/${id}/poster/view`, request.url));
   }
 
   const { data, error } = await getVisibleEvent(id);
