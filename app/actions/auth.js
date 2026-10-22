@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getPublicSupabaseEnv } from "@/lib/supabase/env";
+import { validateFullName } from "@/lib/roles";
 
 function readText(formData, name) {
   return String(formData.get(name) || "").trim();
@@ -37,9 +38,16 @@ async function siteUrl() {
 
 export async function signUp(formData) {
   ensureConfigured("/signup");
+  const fullName = readText(formData, "fullName");
   const email = readText(formData, "email");
   const password = String(formData.get("password") || "");
   const confirmPassword = String(formData.get("confirmPassword") || "");
+
+  const name = validateFullName(fullName);
+
+  if (!name.ok) {
+    fail("/signup", name.message);
+  }
 
   if (!isValidEmail(email)) {
     fail("/signup", "Enter a valid email address.");
@@ -60,6 +68,7 @@ export async function signUp(formData) {
     password,
     options: {
       emailRedirectTo: `${origin}/auth/confirm`,
+      data: { full_name: name.value },
     },
   });
 
@@ -82,10 +91,22 @@ export async function signIn(formData) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     fail("/login", error.message);
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("is_active")
+    .eq("id", data.user.id)
+    .maybeSingle();
+
+  // A missing profile row (migration not run yet) is allowed through; requireRole explains it later.
+  if (profile && !profile.is_active) {
+    await supabase.auth.signOut();
+    fail("/login", "This account is inactive. Please contact an administrator.");
   }
 
   redirect("/account");

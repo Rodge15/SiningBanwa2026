@@ -9,6 +9,13 @@ const securityHeaders = [
 const nextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
+  experimental: {
+    serverActions: {
+      // Posters may be 5 MiB. The default Server Action limit is 1 MB,
+      // and multipart form data adds a little extra around the file.
+      bodySizeLimit: "6mb",
+    },
+  },
   turbopack: {
     rules: {
       "*.css": {

@@ -20,6 +20,21 @@ export default function SignUpPage({ searchParams }) {
       </Suspense>
       <form action={signUp} className="space-y-4">
         <div>
+          <label htmlFor="fullName" className="text-sm font-medium">
+            Full name
+          </label>
+          <input
+            id="fullName"
+            name="fullName"
+            type="text"
+            autoComplete="name"
+            minLength={2}
+            maxLength={120}
+            required
+            className={fieldClass}
+          />
+        </div>
+        <div>
           <label htmlFor="email" className="text-sm font-medium">
             Email
           </label>

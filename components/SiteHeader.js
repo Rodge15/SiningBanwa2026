@@ -16,6 +16,9 @@ export function SiteHeader() {
           <Link href="/" className="hover:text-brand">
             Home
           </Link>
+                    <Link href="/events" className="hover:text-brand">
+                      Events
+                    </Link>
           <Suspense fallback={<span className="text-muted">Checking session...</span>}>
             <AuthNav />
           </Suspense>

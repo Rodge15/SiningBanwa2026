@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { signOut } from "@/app/actions/auth";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentProfile, getCurrentUser } from "@/lib/auth";
+import { EVENT_MANAGER_ROLES } from "@/lib/roles";
 import { getPublicSupabaseEnv } from "@/lib/supabase/env";
 
 export async function AuthNav() {
@@ -31,10 +32,31 @@ export async function AuthNav() {
     );
   }
 
+  let profile = null;
+
+  try {
+    ({ profile } = await getCurrentProfile());
+  } catch {
+    profile = null;
+  }
+
+  const canManageEvents = Boolean(profile?.is_active && EVENT_MANAGER_ROLES.includes(profile.role));
+  const isAdmin = Boolean(profile?.is_active && profile.role === "administrator");
+
   return (
     <div className="flex items-center gap-3 text-sm">
+      {canManageEvents ? (
+        <Link href="/events/manage" className="hover:text-brand">
+          Manage events
+        </Link>
+      ) : null}
+      {isAdmin ? (
+        <Link href="/admin/users" className="hover:text-brand">
+          Users
+        </Link>
+      ) : null}
       <Link href="/account" className="hover:text-brand">
-        Account
+        Dashboard
       </Link>
       <form action={signOut}>
         <button type="submit" className="hover:text-brand">
