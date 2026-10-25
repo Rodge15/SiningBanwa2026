@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { LiveSeatMap } from "@/components/LiveSeatMap";
 import { eventSetupMessage, getVisibleEvent, isMissingEventTable } from "@/lib/events";
+import { attachAudience } from "@/lib/audience";
 import { formatManilaDateTime, isUuid } from "@/lib/eventRules";
 import { getEventLayout, isMissingSeatTable } from "@/lib/seats";
 import { getPublicSupabaseEnv } from "@/lib/supabase/env";
@@ -41,7 +42,9 @@ async function EventDetails({ params }) {
     notFound();
   }
 
-  const layout = await getEventLayout(data.id);
+  const audience = await attachAudience([data]);
+  const availability = audience.events?.[0]?.availability;
+  const layout = data.admission_type === "general" ? { data: { sections: [] }, error: null } : await getEventLayout(data.id);
   const seatError = layout.error && !isMissingSeatTable(layout.error);
 
   return (
@@ -70,22 +73,29 @@ async function EventDetails({ params }) {
           </p>
         ) : null}
         <div className="space-y-3 border-t border-line pt-4">
-          <h2 className="text-xl font-semibold">Seating layout</h2>
-          <p className="text-sm text-muted">Prices are set by the organizer. This map refreshes every few seconds.</p>
+          <h2 className="text-xl font-semibold">{data.admission_type === "general" ? "Tickets" : "Seating layout"}</h2>
+          <p className="text-sm font-medium">{availability?.label || "Availability is not ready yet."}</p>
+          {data.admission_type === "general" ? (
+            <p className="text-sm text-muted">This show does not use a seat map. Ticket price: set by the organizer.</p>
+          ) : (
+            <p className="text-sm text-muted">Seat colors show the tier. The outline shows whether a seat is free, held, or paid.</p>
+          )}
           {seatError ? <p className="text-sm text-red-900">The seating layout could not be loaded.</p> : null}
-          {!layout.error && layout.data.sections.length === 0 ? (
+          {data.admission_type !== "general" && !layout.error && layout.data.sections.length === 0 ? (
             <p className="text-sm text-muted">No seating layout has been saved for this event yet.</p>
           ) : null}
-          {!layout.error && layout.data.sections.length > 0 ? (
-            <>
-              <LiveSeatMap eventId={data.id} initialSections={layout.data.sections} />
-              <p>
-                <Link href={`/events/${data.id}/reserve`} className="text-sm text-brand hover:underline">
-                  Choose seats
-                </Link>
-              </p>
-            </>
+          {data.admission_type !== "general" && !layout.error && layout.data.sections.length > 0 ? (
+            <LiveSeatMap eventId={data.id} initialSections={layout.data.sections} />
           ) : null}
+          {availability?.full ? (
+            <p className="text-sm text-muted">This show is Full, so customers cannot reserve it.</p>
+          ) : (
+            <p>
+              <Link href={`/events/${data.id}/reserve`} className="text-sm text-brand hover:underline">
+                {data.admission_type === "general" ? "Reserve tickets" : "Choose seats"}
+              </Link>
+            </p>
+          )}
         </div>
       </div>
     </article>

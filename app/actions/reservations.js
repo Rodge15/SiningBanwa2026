@@ -58,6 +58,33 @@ export async function createReservation(formData) {
   succeed(`/account/reservations/${data}`, "Seats are on hold. Payment is not part of this step.");
 }
 
+export async function createGeneralAdmissionReservation(formData) {
+  await requireRole(["customer"]);
+  const eventId = String(formData.get("eventId") || "");
+  const path = isUuid(eventId) ? `/events/${eventId}/reserve` : "/events";
+  const quantity = Number(formData.get("quantity"));
+
+  if (!isUuid(eventId)) {
+    fail(path, "That event could not be found.");
+  }
+
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
+    fail(path, "Choose 1 to 10 tickets.");
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("create_general_admission_reservation", {
+    p_event_id: eventId,
+    p_quantity: quantity,
+  });
+
+  if (error || !isUuid(data)) {
+    fail(path, error ? readableDbError(error) : "The reservation could not be saved.");
+  }
+
+  succeed(`/account/reservations/${data}`, "Tickets are on hold. Payment is not part of this step.");
+}
+
 export async function cancelReservation(formData) {
   await requireRole(ROLES);
   const reservationId = String(formData.get("reservationId") || "");

@@ -1,3 +1,4 @@
+import { AdmissionFields } from "@/components/AdmissionFields";
 import { buttonClass, fieldClass } from "@/components/formStyles";
 import { toManilaInputValue } from "@/lib/eventRules";
 
@@ -61,6 +62,7 @@ export function EventForm({ action, event, submitLabel }) {
           className={fieldClass}
         />
       </div>
+      <AdmissionFields event={event} />
       <div>
         <label htmlFor="poster" className="text-sm font-medium">
           Poster (optional JPG, PNG, or WebP, up to 5 MiB)

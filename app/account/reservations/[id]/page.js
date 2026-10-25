@@ -39,7 +39,7 @@ async function ReservationDetails({ params, searchParams }) {
   }
 
   const canCancel = data.status === "awaiting_payment" && !data.paymentSubmittedAt;
-  const pricesMatch = totalsMatch(data.totalAmount, data.items);
+  const pricesMatch = data.ticketQuantity > 0 || totalsMatch(data.totalAmount, data.items);
 
   return (
     <article className="space-y-4 rounded-2xl border border-line bg-card p-6 shadow-sm">
@@ -55,6 +55,7 @@ async function ReservationDetails({ params, searchParams }) {
         <QueryMessage searchParams={searchParams} />
       </Suspense>
       {canCancel && data.holdExpiresAt ? <HoldCountdown expiresAt={data.holdExpiresAt} /> : null}
+      {data.ticketQuantity > 0 ? <p className="text-sm">Tickets held: {data.ticketQuantity}</p> : null}
       <ul className="space-y-1 text-sm">
         {data.items.map((item) => (
           <li key={item.id}>

@@ -14,7 +14,7 @@ function listedSeats(sections) {
   for (const section of sections || []) {
     for (const row of section.rows || []) {
       for (const seat of row.seats || []) {
-        seats.push({ section, seat });
+        seats.push({ section, row, seat });
       }
     }
   }
@@ -22,9 +22,9 @@ function listedSeats(sections) {
   return seats;
 }
 
-function shownPrice(section, seat) {
+function shownPrice(section, seat, row) {
   if (seat.livePrice == null || Number.isNaN(Number(seat.livePrice))) {
-    return effectivePrice(seat, section);
+    return effectivePrice(seat, section, row);
   }
 
   return Number(seat.livePrice);
@@ -63,11 +63,11 @@ export function SeatPicker({ eventId, initialSections, canReserve, signedIn = fa
   }
 
   const chosen = useMemo(() => {
-    const byId = new Map(listedSeats(sections).map(({ section, seat }) => [seat.id, { section, seat }]));
+    const byId = new Map(listedSeats(sections).map(({ section, row, seat }) => [seat.id, { section, row, seat }]));
     return selected.map((id) => byId.get(id)).filter(Boolean);
   }, [sections, selected]);
 
-  const estimate = chosen.reduce((total, item) => total + shownPrice(item.section, item.seat), 0);
+  const estimate = chosen.reduce((total, item) => total + shownPrice(item.section, item.seat, item.row), 0);
 
   return (
     <div className="space-y-4">
@@ -86,9 +86,9 @@ export function SeatPicker({ eventId, initialSections, canReserve, signedIn = fa
           <p className="mt-2 text-sm text-muted">Click available seats. You can hold up to {MAX_SEATS_PER_RESERVATION}.</p>
         ) : (
           <ul className="mt-2 space-y-1 text-sm">
-            {chosen.map(({ section, seat }) => (
+            {chosen.map(({ section, row, seat }) => (
               <li key={seat.id}>
-                {seat.label} · {section.name} · {formatPeso(shownPrice(section, seat))}
+                {seat.label} · {section.name} · {formatPeso(shownPrice(section, seat, row))}
               </li>
             ))}
           </ul>

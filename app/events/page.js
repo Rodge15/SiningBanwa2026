@@ -2,7 +2,8 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { EventCard } from "@/components/EventCard";
 import { QueryMessage } from "@/components/QueryMessage";
-import { eventSetupMessage, isMissingEventTable, listPublishedEvents } from "@/lib/events";
+import { attachAudience } from "@/lib/audience";
+import { eventLoadMessage, listPublishedEvents } from "@/lib/events";
 import { getPublicSupabaseEnv } from "@/lib/supabase/env";
 
 export const metadata = {
@@ -19,7 +20,10 @@ async function PublishedEvents({ searchParams }) {
     );
   }
 
-  const { data, error } = await listPublishedEvents();
+  const listed = await listPublishedEvents();
+  const audience = listed.error ? { events: listed.data, error: listed.error } : await attachAudience(listed.data);
+  const data = audience.events;
+  const error = listed.error || audience.error;
 
   return (
     <>
@@ -28,7 +32,7 @@ async function PublishedEvents({ searchParams }) {
       </Suspense>
       {error ? (
         <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
-          {isMissingEventTable(error) ? eventSetupMessage() : "Published events could not be loaded."}
+          {eventLoadMessage(error)}
         </p>
       ) : null}
       {!error && data?.length === 0 ? (

@@ -64,13 +64,17 @@ async function EditEvent({ params, searchParams }) {
         </div>
       </div>
       <aside className="h-fit rounded-2xl border border-line bg-card p-6 shadow-sm">
-        <h2 className="text-lg font-semibold">Seats</h2>
+        <h2 className="text-lg font-semibold">{data.admission_type === "general" ? "Tickets" : "Seats"}</h2>
         <p className="mt-2 text-sm leading-6 text-muted">
-          Design the grid, prices, and blocked seats before bookings open.
+          {data.admission_type === "general"
+            ? "This is general admission. There is no seat map. Set the capacity and ticket price in the event form."
+            : "Drag sections, rows, and seats into place. Set a price and tier for each row before bookings open."}
         </p>
-        <Link href={`/events/manage/${data.id}/seats`} className={`${buttonClass} mt-4 w-full`}>
-          Design seats
-        </Link>
+        {data.admission_type === "general" ? null : (
+          <Link href={`/events/manage/${data.id}/seats`} className={`${buttonClass} mt-4 w-full`}>
+            Design seats
+          </Link>
+        )}
         <h2 className="mt-8 text-lg font-semibold">Status</h2>
         <p className="mt-2 text-sm leading-6 text-muted">
           Publish makes the event public. Cancel keeps the record and hides it from guests.

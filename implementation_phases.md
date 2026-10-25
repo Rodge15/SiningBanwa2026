@@ -62,26 +62,27 @@ This document divides the project into manageable development phases for a **new
 **Completion check:** A guest can browse published events from the homepage. A signed-in customer can update their profile, and an incorrect current password does not change the password. No new database migration is required.
 
 ## Phase 5: Visual Seat Layout Designer
-**Goal:** Let management design seating for each event.
+**Goal:** Let management design each show as either a seated layout or general admission, and show how many places remain.
 
-- Create and manage seating sections and rows.
-- Add, rename, and remove seats by clicking boxes in a row-and-column grid instead of placing each seat by hand.
-- Save each seat's label and box position in the database.
-- Set a default price for each section and allow individual seat price overrides.
+- Create and manage seating sections, rows, and seats for seated events.
+- Set a price and a tier label for each section or row. Example: row 1 is VIP at 300 pesos, and row 2 is VIP at 250 pesos. Tiers are VIP, Semi-VIP, and Regular.
+- Color seats by tier. Regular is green, Semi-VIP is blue, and VIP has its own separate color. The seat map and the legend use the same colors and labels for management and customers.
+- Place sections, rows, and seats by dragging them on the canvas. Save those positions so the layout reloads exactly as designed.
 - Mark seats as available, blocked, reserved, or sold as appropriate.
 - Provide a preview of the layout before bookings are accepted.
-- Display the saved layout consistently to management and customers.
-- Prevent changes that would damage existing confirmed bookings, using a Postgres function so the check and the change happen in one transaction.
-- Color each seat box by payment status: available, awaiting payment, paid, on hold, or blocked.
+- When creating an event, choose seated or general admission. A seated event uses the seat map. A general admission event has no seat map. The admin sets a capacity and one ticket price, and customers reserve a number of tickets instead of specific seats.
+- For every show, the admin sets the total audience capacity. Management and customers can see how many seats or tickets remain. When none remain, the show is marked Full and customers cannot reserve it. Seated remaining comes from available seats on the map. General admission remaining is capacity minus reserved tickets.
+- Display the saved layout consistently to management and customers. Only seated events show the seat map.
+- Prevent changes that would move or delete booked or sold seats, using a Postgres function so the check and the change happen in one transaction.
 - Provide an accessible close control and a Back option when previewing an event poster so users can return without getting stuck on the image.
 
-**Completion check:** Management can save a layout with different seat prices, reopen it, and see the same layout and pricing.
+**Completion check:** Management can drag a layout into place, set a different price and tier per row, reopen it, and see the same positions, colors, and prices. A general admission event has no seat map. Both event types show remaining places, and a full show cannot be reserved.
 
 ## Phase 6: Online Reservations and Seat Holds
 **Goal:** Allow customers to reserve available seats without double-booking.
 
-- Display available events, seating layouts, and prices.
-- Allow customers to select one or more seats.
+- Display available events, seating layouts, and prices. A general admission event skips the seat map and asks for a ticket count.
+- Allow customers to select one or more seats on a seated event, or a number of tickets on a general admission event. A full show cannot be reserved.
 - Calculate the total on the server using the selected seats' database prices; never trust prices sent by the browser.
 - Temporarily lock selected seats for five minutes (configurable) using a Postgres function that runs `SELECT ... FOR UPDATE` inside a transaction, plus a unique constraint to block duplicates.
 - Release expired locks (for seats with no submitted payment proof) whenever seat availability is read or a reservation is attempted, with an optional scheduled cleanup.

@@ -4,7 +4,8 @@ import { QueryMessage } from "@/components/QueryMessage";
 import { buttonClass } from "@/components/formStyles";
 import { requireRole } from "@/lib/auth";
 import { EVENT_MANAGER_ROLES, roleLabel } from "@/lib/roles";
-import { eventSetupMessage, isMissingEventTable, listManagedEvents } from "@/lib/events";
+import { attachAudience } from "@/lib/audience";
+import { eventLoadMessage, listManagedEvents } from "@/lib/events";
 import { formatManilaDateTime, statusLabel } from "@/lib/eventRules";
 
 export const metadata = {
@@ -14,7 +15,10 @@ export const metadata = {
 async function ManageEvents({ searchParams }) {
   const { profile } = await requireRole(EVENT_MANAGER_ROLES);
 
-  const { data, error } = await listManagedEvents();
+  const listed = await listManagedEvents();
+  const audience = listed.error ? { events: listed.data, error: listed.error } : await attachAudience(listed.data);
+  const data = audience.events;
+  const error = listed.error || audience.error;
 
   return (
     <section className="space-y-6">
@@ -35,7 +39,7 @@ async function ManageEvents({ searchParams }) {
       </Suspense>
       {error ? (
         <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
-          {isMissingEventTable(error) ? eventSetupMessage() : "Events could not be loaded."}
+          {eventLoadMessage(error)}
         </p>
       ) : null}
       {!error && data?.length === 0 ? (
@@ -50,6 +54,7 @@ async function ManageEvents({ searchParams }) {
               <tr>
                 <th className="px-4 py-3 font-medium">Title</th>
                 <th className="px-4 py-3 font-medium">Start</th>
+                <th className="px-4 py-3 font-medium">Places left</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Action</th>
               </tr>
@@ -59,14 +64,19 @@ async function ManageEvents({ searchParams }) {
                 <tr key={event.id} className="border-b border-line last:border-0">
                   <td className="px-4 py-3 font-medium">{event.title}</td>
                   <td className="px-4 py-3">{formatManilaDateTime(event.starts_at)}</td>
+                  <td className="px-4 py-3">{event.availability?.label || "Not ready"}</td>
                   <td className="px-4 py-3">{statusLabel(event.status)}</td>
                   <td className="px-4 py-3">
                     <Link href={`/events/manage/${event.id}`} className="text-brand hover:underline">
                       Edit
                     </Link>
-                    <Link href={`/events/manage/${event.id}/seats`} className="ml-3 text-brand hover:underline">
-                      Seats
-                    </Link>
+                    {event.admission_type === "general" ? (
+                      <span className="ml-3 text-muted">No seat map</span>
+                    ) : (
+                      <Link href={`/events/manage/${event.id}/seats`} className="ml-3 text-brand hover:underline">
+                        Seats
+                      </Link>
+                    )}
                   </td>
                 </tr>
               ))}

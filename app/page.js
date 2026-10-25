@@ -2,7 +2,8 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { EventCard } from "@/components/EventCard";
 import { buttonClass } from "@/components/formStyles";
-import { eventSetupMessage, isMissingEventTable, listPublishedEvents } from "@/lib/events";
+import { attachAudience } from "@/lib/audience";
+import { eventLoadMessage, listPublishedEvents } from "@/lib/events";
 import { getPublicSupabaseEnv } from "@/lib/supabase/env";
 
 async function HomeEvents() {
@@ -15,12 +16,15 @@ async function HomeEvents() {
     );
   }
 
-  const { data, error } = await listPublishedEvents();
+  const listed = await listPublishedEvents();
+  const audience = listed.error ? { events: listed.data, error: listed.error } : await attachAudience(listed.data);
+  const data = audience.events;
+  const error = listed.error || audience.error;
 
   if (error) {
     return (
       <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
-        {isMissingEventTable(error) ? eventSetupMessage() : "Published events could not be loaded."}
+        {eventLoadMessage(error)}
       </p>
     );
   }

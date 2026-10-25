@@ -36,6 +36,21 @@ async function Designer({ params, searchParams }) {
     notFound();
   }
 
+  if (data.admission_type === "general") {
+    return (
+      <div className="space-y-3">
+        <Link href={`/events/manage/${data.id}`} className="text-sm text-brand hover:underline">
+          Back to event editor
+        </Link>
+        <h1 className="text-3xl font-semibold">No seat map</h1>
+        <p className="text-sm text-muted">
+          {data.title} is general admission. Customers reserve a number of tickets. The capacity and ticket price are
+          on the event form.
+        </p>
+      </div>
+    );
+  }
+
   const layout = await getEventLayout(id);
 
   if (layout.error) {
@@ -55,8 +70,8 @@ async function Designer({ params, searchParams }) {
         <p className="mt-3 text-sm font-medium uppercase tracking-wide text-brand">Staff</p>
         <h1 className="mt-1 text-3xl font-semibold">Design seats</h1>
         <p className="mt-2 text-sm text-muted">
-          {data.title}. Click an empty box to add a seat. Click a seat to rename it, set its own price, or mark it
-          available, blocked, reserved, or sold. Save, then refresh to confirm the same layout.
+          {data.title}. Drag a section, row, or seat on the canvas. Set each row&apos;s tier and price. A booked or
+          sold seat cannot be moved. Save, then refresh to confirm the same positions and colors.
         </p>
       </div>
       <Suspense fallback={null}>

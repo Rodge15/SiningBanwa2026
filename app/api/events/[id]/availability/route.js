@@ -35,7 +35,7 @@ export async function GET(_request, { params }) {
 
   const { data, error } = await supabase
     .from("event_seats")
-    .select("id, status, price_override, section_id")
+    .select("id, status, price_override, section_id, row_id")
     .eq("event_id", id);
 
   if (error) {
@@ -48,19 +48,26 @@ export async function GET(_request, { params }) {
     );
   }
 
-  const sections = await supabase.from("event_sections").select("id, default_price").eq("event_id", id);
+  const [sections, rows] = await Promise.all([
+    supabase.from("event_sections").select("id, default_price").eq("event_id", id),
+    supabase.from("event_rows").select("id, price").eq("event_id", id),
+  ]);
 
-  if (sections.error) {
+  if (sections.error || rows.error) {
     return json({ seats: [], message: "Seat prices could not be loaded." }, 500);
   }
 
-  const prices = new Map((sections.data || []).map((section) => [section.id, Number(section.default_price)]));
+  const sectionPrices = new Map((sections.data || []).map((section) => [section.id, Number(section.default_price)]));
+  const rowPrices = new Map((rows.data || []).map((row) => [row.id, Number(row.price)]));
 
   return json({
     seats: (data || []).map((seat) => ({
       id: seat.id,
       status: seat.status,
-      price: seat.price_override === null ? prices.get(seat.section_id) ?? null : Number(seat.price_override),
+      price:
+        seat.price_override === null
+          ? rowPrices.get(seat.row_id) ?? sectionPrices.get(seat.section_id) ?? null
+          : Number(seat.price_override),
     })),
     serverTime: new Date().toISOString(),
   });

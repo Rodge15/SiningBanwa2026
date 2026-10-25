@@ -105,15 +105,18 @@ Venue personnel must not access payment verification, user administration, or se
 
 ### FR-03: Visual Seat Layout Designer
 
--   Management must be able to create a separate seating layout for each event.
+-   Management must be able to create a separate seating layout for each seated event.
 -   Management must be able to create and manage sections, rows, and individual seats.
 -   Each seat must have a unique label within its event.
--   Visual seat positions must be saved and reloaded from the database.
--   Management must be able to assign a default price to a section and override individual seat prices.
+-   Management must be able to place sections, rows, and seats by dragging them, and those positions must be saved and reloaded from the database.
+-   Management must be able to set a price and a tier for each section or row. Tiers are VIP, Semi-VIP, and Regular. A row may have its own price even when it shares a tier with another row.
+-   Seat boxes are colored by tier: Regular green, Semi-VIP blue, and VIP a separate color. The legend uses the same colors and labels for management and customers.
 -   Management must be able to block seats.
 -   Saved layouts must persist after the page is refreshed.
--   Existing booked or sold seats must be protected when editing a layout.
+-   Existing booked or sold seats must not be moved or deleted in a way that damages confirmed bookings.
 -   Management must be able to preview the layout before customer bookings are accepted.
+-   Each event is either seated or general admission. Only seated events use the seat map. A general admission event stores a capacity and a ticket price and does not ask the customer to pick a seat.
+-   Each event stores a total audience capacity. Management and customers must see how many seats or tickets remain. A show with none left is shown as Full and cannot be reserved. Seated availability is the count of available seats. General admission availability is capacity minus reserved tickets.
 
 ### FR-04: Seat Availability and Pricing
 
@@ -271,9 +274,9 @@ These are logical entities. The exact schema, data types, and relationships must
 | Table / Entity        | Purpose                                                                  |
 |-----------------------|--------------------------------------------------------------------------|
 | `profiles`            | Account details linked to Supabase Auth users, roles, and account status  |
-| `events`              | Event information, schedule, venue, poster, status, and creator          |
-| `event_sections`      | Event-specific seating sections and default prices                       |
-| `event_seats`         | Individual seats, section membership, labels, prices, positions, and availability |
+| `events`              | Event information, schedule, venue, poster, status, creator, seated or general admission, audience capacity, and general-admission ticket price |
+| `event_sections`      | Event-specific sections and rows, tier, section or row price, and saved drag positions |
+| `event_seats`         | Individual seats, section membership, labels, prices, drag positions, and availability |
 | `reservations`        | Booking, customer, status, total amount, source, and creator             |
 | `reservation_items`   | Seats included in a reservation and historical price per seat            |
 | `payments`            | Payment submissions, amounts, references, proof, status, and verification details |

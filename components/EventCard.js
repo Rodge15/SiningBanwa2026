@@ -18,11 +18,14 @@ export function EventCard({ event, href }) {
             </Link>
           </h2>
           <span className="rounded-full border border-line px-2 py-1 text-xs text-muted">
-            {statusLabel(event.status)}
+            {event.availability?.full ? "Full" : statusLabel(event.status)}
           </span>
         </div>
         <p className="text-sm text-muted">{formatManilaDateTime(event.starts_at)}</p>
         <p className="text-sm">{event.venue}</p>
+        {event.availability ? (
+          <p className="text-sm font-medium">{event.availability.label}</p>
+        ) : null}
         <p className="line-clamp-3 text-sm leading-6 text-muted">{event.description}</p>
       </div>
     </article>
