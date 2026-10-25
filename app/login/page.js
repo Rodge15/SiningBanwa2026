@@ -9,16 +9,20 @@ export const metadata = {
   title: "Log in | Sining Banwa",
 };
 
-export default function LoginPage({ searchParams }) {
+export default async function LoginPage({ searchParams }) {
+  const query = await searchParams;
+  const next = typeof query.next === "string" ? query.next : "";
+
   return (
     <AuthCard
       title="Log in"
       description="Use the email and password from your Supabase account."
     >
       <Suspense fallback={null}>
-        <QueryMessage searchParams={searchParams} />
+        <QueryMessage searchParams={Promise.resolve(query)} />
       </Suspense>
       <form action={signIn} className="space-y-4">
+        <input type="hidden" name="next" value={next} />
         <div>
           <label htmlFor="email" className="text-sm font-medium">
             Email

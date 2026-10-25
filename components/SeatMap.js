@@ -7,11 +7,6 @@ const BOX_HEIGHT = 58;
 const GAP = 8;
 const ROW_LABEL_WIDTH = 36;
 
-function seatName(seat, section) {
-  const meta = seatStatusMeta(seat.status);
-  return `Seat ${seat.label}, ${formatPeso(effectivePrice(seat, section))}, ${meta.label}`;
-}
-
 export function SeatLegend() {
   return (
     <ul className="flex flex-wrap gap-3 text-xs text-muted">
@@ -25,7 +20,15 @@ export function SeatLegend() {
   );
 }
 
-export function SeatMap({ sections, interactive = false, selectedKey = "", onBoxClick }) {
+export function SeatMap({
+  sections,
+  interactive = false,
+  selectedKey = "",
+  selectedSeatIds = [],
+  onBoxClick,
+  selectAvailableOnly = false,
+}) {
+  const selectedIds = new Set(selectedSeatIds);
   if (!sections?.length) {
     return <p className="text-sm text-muted">No seating sections yet.</p>;
   }
@@ -65,26 +68,29 @@ export function SeatMap({ sections, interactive = false, selectedKey = "", onBox
                         const seat = seatsByColumn.get(colIndex) || null;
                         const x = ROW_LABEL_WIDTH + colIndex * (BOX_WIDTH + GAP);
                         const key = `${section.id}:${row.id}:${colIndex}`;
-                        const selected = key === selectedKey;
+                        const selected = key === selectedKey || Boolean(seat && selectedIds.has(seat.id));
                         const meta = seat ? seatStatusMeta(seat.status) : null;
+                        const canClick = interactive && (!selectAvailableOnly || seat?.status === "available");
+                        const price = seat?.livePrice == null ? null : Number(seat.livePrice);
+                        const shownPrice = seat ? (Number.isFinite(price) ? price : effectivePrice(seat, section)) : null;
                         const label = seat
-                          ? seatName(seat, section)
+                          ? `Seat ${seat.label}, ${formatPeso(shownPrice)}, ${meta.label}`
                           : `Empty box, row ${row.label}, column ${colIndex + 1}`;
 
                         return (
                           <g
                             key={key}
-                            role={interactive ? "button" : "img"}
-                            tabIndex={interactive ? 0 : undefined}
+                            role={canClick ? "button" : "img"}
+                            tabIndex={canClick ? 0 : undefined}
                             aria-label={label}
-                            aria-pressed={interactive ? selected : undefined}
+                            aria-pressed={canClick ? selected : undefined}
                             onClick={
-                              interactive
+                              canClick
                                 ? () => onBoxClick?.({ sectionId: section.id, rowId: row.id, colIndex, seat })
                                 : undefined
                             }
                             onKeyDown={
-                              interactive
+                              canClick
                                 ? (event) => {
                                     if (event.key === "Enter" || event.key === " ") {
                                       event.preventDefault();
@@ -93,7 +99,7 @@ export function SeatMap({ sections, interactive = false, selectedKey = "", onBox
                                   }
                                 : undefined
                             }
-                            className={interactive ? "cursor-pointer" : undefined}
+                            className={canClick ? "cursor-pointer" : undefined}
                           >
                             <title>{label}</title>
                             <rect
@@ -127,7 +133,7 @@ export function SeatMap({ sections, interactive = false, selectedKey = "", onBox
                                 fill={meta.text}
                                 pointerEvents="none"
                               >
-                                {formatPeso(effectivePrice(seat, section))}
+                                {formatPeso(shownPrice)}
                               </text>
                             ) : null}
                           </g>

@@ -47,6 +47,16 @@ Seats, reservations, payments, tickets, and SMS are later phases.
 - A poster preview page with Back and Close, so the picture is not a dead end
 - No reservations, seat holds, payments, tickets, or SMS
 
+## What Phase 6 includes
+
+- Customers can select one or more available seats on a published event
+- A five-minute hold, stored in the database, not chosen by the browser
+- The total is calculated from saved seat prices inside a Postgres function
+- Expired holds are released when seats are read, when a new hold is attempted, or by opening `/api/reservations/release`
+- The public seat map polls every few seconds, so other people see holds without refreshing
+- A customer page shows the reservation status, snapshot prices, and stored total
+- No payment proof, staff booking, tickets, or SMS
+
 ## 1. Install the tools
 
 Node.js LTS and the Supabase CLI should already be installed. Check them:
@@ -186,6 +196,18 @@ No new SQL. Phase 3 already stores the phone number.
 6. Change the password with the correct current password. Log in with the new one.
 7. As a customer, open `/admin/customers/export`. It must refuse you.
 8. As an administrator, open **Users** and click **Download customer contacts**. The file has `name`, `email`, and `phone` for customer accounts only.
+
+## 9. Test Phase 6
+
+1. Run `supabase/migrations/20261025120000_create_reservations.sql` once in the Supabase SQL Editor, after the Phase 5 file. Paste the whole file and click Run. Do not run it twice, and do not drop tables. `supabase db push` also works if the project is linked.
+2. To change the hold length, run `update public.reservation_settings set hold_minutes = 5 where id = 1;` in the SQL Editor. New holds use the new number. Old holds keep the time they were given.
+3. Publish an event that has at least two available seats with different prices.
+4. Log in as a customer. Open the event, then **Choose seats**. Select both seats and click **Hold these seats**.
+5. Open **Reservations**. The total must equal the two saved seat prices, not a number you typed.
+6. Open the same event in another browser without refreshing after the first hold. Within a few seconds those seats turn purple and cannot be held again.
+7. Wait for the hold to end, or set `hold_minutes` to 1 before creating a new hold. The seats become available again and the reservation shows **Expired**.
+8. Cancel a new hold before it ends. The seats become available without waiting.
+9. A blocked, reserved, or sold seat must not be selectable. A customer must not open event management. Payment is not on this page.
 
 ## 8. Test Phase 5
 

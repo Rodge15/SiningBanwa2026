@@ -55,6 +55,9 @@ export async function AuthNav() {
           Users
         </Link>
       ) : null}
+      <Link href="/account/reservations" className="hover:text-brand">
+        Reservations
+      </Link>
       <Link href="/account" className="hover:text-brand">
         Dashboard
       </Link>

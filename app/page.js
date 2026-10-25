@@ -51,8 +51,8 @@ export default function Home() {
           Sining Banwa event system
         </h1>
         <p className="mt-4 max-w-2xl leading-7 text-muted">
-          Browse published Sining Banwa events, or create an account to sign in. Seats, payments, and
-          tickets come in later phases.
+          Browse published Sining Banwa events, or create an account to hold seats. Payments and tickets
+          come in later phases.
         </p>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <Link href="/events" className={buttonClass}>

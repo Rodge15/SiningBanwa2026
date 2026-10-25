@@ -52,7 +52,7 @@ export default function EventsPage({ searchParams }) {
         <p className="text-sm font-medium uppercase tracking-wide text-brand">Public events</p>
         <h1 className="mt-1 text-3xl font-semibold">Sining Banwa events</h1>
         <p className="mt-2 max-w-2xl leading-7 text-muted">
-          Only published events are listed. Seats and reservations are not part of this phase.
+          Only published events are listed. Open an event to see seats and hold available ones.
         </p>
       </div>
       <Suspense fallback={<p className="text-sm text-muted">Loading published events...</p>}>

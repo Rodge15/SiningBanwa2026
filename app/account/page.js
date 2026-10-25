@@ -33,6 +33,13 @@ async function Dashboard({ searchParams }) {
           <p className="mt-2 text-sm text-muted">Browse events that are open to the public.</p>
         </Link>
         <Link
+          href="/account/reservations"
+          className="rounded-2xl border border-line bg-card p-5 shadow-sm hover:border-brand"
+        >
+          <h2 className="font-semibold">My reservations</h2>
+          <p className="mt-2 text-sm text-muted">See seats you are holding and the saved total.</p>
+        </Link>
+        <Link
           href="/account/profile"
           className="rounded-2xl border border-line bg-card p-5 shadow-sm hover:border-brand"
         >
@@ -58,7 +65,7 @@ async function Dashboard({ searchParams }) {
           </Link>
         ) : null}
       </div>
-      <p className="text-sm text-muted">Reservations, payments, and tickets are later phases.</p>
+      <p className="text-sm text-muted">Payments and tickets are later phases.</p>
       <form action={signOut}>
         <button type="submit" className={buttonClass}>
           Log out

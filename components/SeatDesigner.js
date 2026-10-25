@@ -408,7 +408,7 @@ export function SeatDesigner({ eventId, initialLayout, action }) {
         <div className="rounded-2xl border border-line bg-card p-4">
           <h2 className="text-lg font-semibold">Customer preview</h2>
           <p className="mt-1 mb-4 text-sm text-muted">
-            This is the saved-looking map customers will see. Booking is not open yet.
+            This is the saved-looking map customers will see. Holds open after you save and publish.
           </p>
           <SeatMap sections={parsed.ok ? parsed.value.sections : sections} />
         </div>

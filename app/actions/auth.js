@@ -15,7 +15,24 @@ function isValidEmail(email) {
 }
 
 function fail(path, message) {
-  redirect(`${path}?error=${encodeURIComponent(message)}`);
+  const [pathname, query = ""] = String(path || "/").split("?");
+  const params = new URLSearchParams(query);
+  params.set("error", message);
+  redirect(`${pathname}?${params.toString()}`);
+}
+
+function safeNextPath(value) {
+  const next = String(value || "");
+
+  if (next === "/account/reservations") {
+    return next;
+  }
+
+  if (/^\/events\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/reserve$/i.test(next)) {
+    return next;
+  }
+
+  return "/account";
 }
 
 function ensureConfigured(path) {
@@ -85,16 +102,18 @@ export async function signIn(formData) {
   ensureConfigured("/login");
   const email = readText(formData, "email");
   const password = String(formData.get("password") || "");
+  const next = safeNextPath(formData.get("next"));
+  const loginPath = next === "/account" ? "/login" : `/login?next=${encodeURIComponent(next)}`;
 
   if (!isValidEmail(email) || !password) {
-    fail("/login", "Enter your email and password.");
+    fail(loginPath, "Enter your email and password.");
   }
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    fail("/login", error.message);
+    fail(loginPath, error.message);
   }
 
   const { data: profile } = await supabase
@@ -106,10 +125,10 @@ export async function signIn(formData) {
   // A missing profile row (migration not run yet) is allowed through; requireRole explains it later.
   if (profile && !profile.is_active) {
     await supabase.auth.signOut();
-    fail("/login", "This account is inactive. Please contact an administrator.");
+    fail(loginPath, "This account is inactive. Please contact an administrator.");
   }
 
-  redirect("/account");
+  redirect(next);
 }
 
 export async function signOut() {

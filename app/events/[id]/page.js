@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { SeatMap } from "@/components/SeatMap";
+import { LiveSeatMap } from "@/components/LiveSeatMap";
 import { eventSetupMessage, getVisibleEvent, isMissingEventTable } from "@/lib/events";
 import { formatManilaDateTime, isUuid } from "@/lib/eventRules";
 import { getEventLayout, isMissingSeatTable } from "@/lib/seats";
@@ -71,12 +71,21 @@ async function EventDetails({ params }) {
         ) : null}
         <div className="space-y-3 border-t border-line pt-4">
           <h2 className="text-xl font-semibold">Seating layout</h2>
-          <p className="text-sm text-muted">Prices are set by the organizer. Seat booking is not open on this page.</p>
+          <p className="text-sm text-muted">Prices are set by the organizer. This map refreshes every few seconds.</p>
           {seatError ? <p className="text-sm text-red-900">The seating layout could not be loaded.</p> : null}
           {!layout.error && layout.data.sections.length === 0 ? (
             <p className="text-sm text-muted">No seating layout has been saved for this event yet.</p>
           ) : null}
-          {!layout.error && layout.data.sections.length > 0 ? <SeatMap sections={layout.data.sections} /> : null}
+          {!layout.error && layout.data.sections.length > 0 ? (
+            <>
+              <LiveSeatMap eventId={data.id} initialSections={layout.data.sections} />
+              <p>
+                <Link href={`/events/${data.id}/reserve`} className="text-sm text-brand hover:underline">
+                  Choose seats
+                </Link>
+              </p>
+            </>
+          ) : null}
         </div>
       </div>
     </article>
