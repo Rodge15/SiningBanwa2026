@@ -76,6 +76,7 @@ export function LiveSeatMap({
   return (
     <SeatMap
       sections={sections}
+      layout="canvas"
       interactive={interactive}
       selectedSeatIds={selectedSeatIds}
       onBoxClick={onBoxClick}

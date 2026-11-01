@@ -1,14 +1,14 @@
 -- Phase 5 fix: tiers, drag positions, seated or general admission, and audience capacity.
--- This file only adds columns and replaces save functions. It does not drop tables.
--- Run it once in the Supabase SQL Editor after 20261025120000_create_reservations.sql.
--- Open SQL Editor, paste this whole file, and click Run.
+-- This file only adds missing columns and replaces save functions. It does not drop tables.
+-- Run it in the Supabase SQL Editor after 20261025120000_create_reservations.sql.
+-- If an earlier run stopped with "column already exists", paste this updated file and run it again.
+-- It skips columns and checks that are already there.
 -- If the project is linked, `supabase db push` from this folder also works.
--- Do not run this file twice.
 
 alter table public.events
-  add column admission_type text not null default 'seated',
-  add column audience_capacity integer,
-  add column ticket_price numeric(10, 2);
+  add column if not exists admission_type text not null default 'seated',
+  add column if not exists audience_capacity integer,
+  add column if not exists ticket_price numeric(10, 2);
 
 update public.events
 set audience_capacity = greatest(
@@ -20,6 +20,11 @@ where audience_capacity is null;
 alter table public.events
   alter column audience_capacity set not null,
   alter column audience_capacity set default 1;
+
+alter table public.events drop constraint if exists events_admission_type_check;
+alter table public.events drop constraint if exists events_audience_capacity_check;
+alter table public.events drop constraint if exists events_ticket_price_check;
+alter table public.events drop constraint if exists events_general_price_check;
 
 alter table public.events
   add constraint events_admission_type_check check (admission_type in ('seated', 'general')),
@@ -41,28 +46,35 @@ comment on column public.events.ticket_price is
   'Required for general admission. Seated prices live on the section or row.';
 
 alter table public.event_sections
-  add column tier text not null default 'regular',
-  add column pos_x integer not null default 40,
-  add column pos_y integer not null default 40;
+  add column if not exists tier text not null default 'regular',
+  add column if not exists pos_x integer not null default 40,
+  add column if not exists pos_y integer not null default 40;
+
+alter table public.event_sections drop constraint if exists event_sections_tier_check;
+alter table public.event_sections drop constraint if exists event_sections_pos_check;
 
 alter table public.event_sections
   add constraint event_sections_tier_check check (tier in ('regular', 'semi_vip', 'vip')),
   add constraint event_sections_pos_check check (pos_x between 0 and 4000 and pos_y between 0 and 4000);
 
 alter table public.event_rows
-  add column tier text not null default 'regular',
-  add column price numeric(10, 2),
-  add column pos_x integer not null default 16,
-  add column pos_y integer not null default 48;
+  add column if not exists tier text not null default 'regular',
+  add column if not exists price numeric(10, 2),
+  add column if not exists pos_x integer not null default 16,
+  add column if not exists pos_y integer not null default 48;
 
-update public.event_rows row
+update public.event_rows event_row
 set price = section.default_price
 from public.event_sections section
-where section.id = row.section_id
-  and row.price is null;
+where section.id = event_row.section_id
+  and event_row.price is null;
 
 alter table public.event_rows
   alter column price set not null;
+
+alter table public.event_rows drop constraint if exists event_rows_tier_check;
+alter table public.event_rows drop constraint if exists event_rows_price_check;
+alter table public.event_rows drop constraint if exists event_rows_pos_check;
 
 alter table public.event_rows
   add constraint event_rows_tier_check check (tier in ('regular', 'semi_vip', 'vip')),
@@ -70,25 +82,29 @@ alter table public.event_rows
   add constraint event_rows_pos_check check (pos_x between 0 and 4000 and pos_y between 0 and 4000);
 
 alter table public.event_seats
-  drop constraint event_seats_col_index;
+  drop constraint if exists event_seats_col_index;
 
 alter table public.event_seats
   add constraint event_seats_col_index check (col_index >= 0 and col_index < 200);
 
 alter table public.event_seats
-  add column pos_x integer not null default 0,
-  add column pos_y integer not null default 0,
+  add column if not exists pos_x integer not null default 0,
+  add column if not exists pos_y integer not null default 0;
+
+alter table public.event_seats drop constraint if exists event_seats_pos_check;
+
+alter table public.event_seats
   add constraint event_seats_pos_check check (pos_x between 0 and 4000 and pos_y between 0 and 4000);
 
 update public.event_sections
 set pos_x = 40,
     pos_y = 40 + sort_order * 220;
 
-update public.event_rows row
+update public.event_rows event_row
 set pos_x = section.pos_x + 16,
-    pos_y = section.pos_y + 48 + row.sort_order * 72
+    pos_y = section.pos_y + 48 + event_row.sort_order * 72
 from public.event_sections section
-where section.id = row.section_id;
+where section.id = event_row.section_id;
 
 update public.event_seats seat
 set pos_x = event_row.pos_x + seat.col_index * 92,
@@ -106,7 +122,9 @@ comment on column public.event_seats.pos_x is
   'Saved canvas position. A reserved, sold, or on-hold seat cannot be moved.';
 
 alter table public.reservations
-  add column ticket_quantity integer not null default 0;
+  add column if not exists ticket_quantity integer not null default 0;
+
+alter table public.reservations drop constraint if exists reservations_ticket_quantity_check;
 
 alter table public.reservations
   add constraint reservations_ticket_quantity_check check (ticket_quantity between 0 and 2000);
@@ -114,10 +132,10 @@ alter table public.reservations
 comment on column public.reservations.ticket_quantity is
   'General admission ticket count. Seated holds keep this at 0 and use reservation items.';
 
-drop function public.save_event_layout(uuid, jsonb);
-drop function public.seat_layout_sections(jsonb);
-drop function public.seat_layout_rows(jsonb);
-drop function public.seat_layout_seats(jsonb);
+drop function if exists public.save_event_layout(uuid, jsonb);
+drop function if exists public.seat_layout_sections(jsonb);
+drop function if exists public.seat_layout_rows(jsonb);
+drop function if exists public.seat_layout_seats(jsonb);
 
 create function public.seat_layout_sections(p_layout jsonb)
 returns table (
@@ -314,14 +332,14 @@ begin
     and seat.status in ('reserved', 'sold', 'locked')
     and seat.price_override is null;
 
-  update public.event_rows row
+  update public.event_rows event_row
   set sort_order = numbered.n
   from (
     select id, 10000 + row_number() over (partition by section_id order by id) as n
     from public.event_rows
     where event_id = p_event_id
   ) numbered
-  where row.id = numbered.id;
+  where event_row.id = numbered.id;
 
   update public.event_seats seat
   set col_index = numbered.n

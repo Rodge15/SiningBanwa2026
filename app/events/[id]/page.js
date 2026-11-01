@@ -5,6 +5,7 @@ import { LiveSeatMap } from "@/components/LiveSeatMap";
 import { eventSetupMessage, getVisibleEvent, isMissingEventTable } from "@/lib/events";
 import { attachAudience } from "@/lib/audience";
 import { formatManilaDateTime, isUuid } from "@/lib/eventRules";
+import { formatPeso } from "@/lib/seatRules";
 import { getEventLayout, isMissingSeatTable } from "@/lib/seats";
 import { getPublicSupabaseEnv } from "@/lib/supabase/env";
 
@@ -76,7 +77,7 @@ async function EventDetails({ params }) {
           <h2 className="text-xl font-semibold">{data.admission_type === "general" ? "Tickets" : "Seating layout"}</h2>
           <p className="text-sm font-medium">{availability?.label || "Availability is not ready yet."}</p>
           {data.admission_type === "general" ? (
-            <p className="text-sm text-muted">This show does not use a seat map. Ticket price: set by the organizer.</p>
+            <p className="text-sm text-muted">This show does not use a seat map. Ticket price: {formatPeso(data.ticket_price)}.</p>
           ) : (
             <p className="text-sm text-muted">Seat colors show the tier. The outline shows whether a seat is free, held, or paid.</p>
           )}

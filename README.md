@@ -200,7 +200,7 @@ No new SQL. Phase 3 already stores the phone number.
 ## 9. Test Phase 6
 
 1. Run `supabase/migrations/20261025120000_create_reservations.sql` once in the Supabase SQL Editor, after the Phase 5 file. Paste the whole file and click Run. Do not run it twice, and do not drop tables. `supabase db push` also works if the project is linked.
-2. After that, run `supabase/migrations/20261026120000_seat_tiers_and_admission.sql` once the same way. This adds seat tiers, saved drag positions, seated or general admission, and audience capacity. It does not drop tables. Do not run it twice.
+2. After that, run `supabase/migrations/20261026120000_seat_tiers_and_admission.sql` the same way. This adds seat tiers, saved drag positions, seated or general admission, and audience capacity. It does not drop tables. If a first run stopped with "column already exists", paste the updated file and run it again. It skips columns that are already there.
 2. To change the hold length, run `update public.reservation_settings set hold_minutes = 5 where id = 1;` in the SQL Editor. New holds use the new number. Old holds keep the time they were given.
 3. Publish an event that has at least two available seats with different prices.
 4. Log in as a customer. Open the event, then **Choose seats**. Select both seats and click **Hold these seats**.

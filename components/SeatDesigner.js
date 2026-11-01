@@ -257,6 +257,39 @@ export function SeatDesigner({ eventId, initialLayout, action }) {
       rows: currentSection.rows.map((item) => (item.id === row.id ? { ...item, seats: [...item.seats, seat] } : item)),
     }));
     setSelected({ sectionId: section.id, rowId: row.id, seatId: seat.id });
+    setError("");
+  }
+
+  function removeRow(section, row) {
+    if (row.seats.some((seat) => lockedIds.has(seat.id))) {
+      setError("A reserved, sold, or on-hold seat cannot be removed or changed.");
+      return;
+    }
+    if (section.rows.length <= 1) {
+      setError("Each section needs at least one row.");
+      return;
+    }
+    updateSection(section.id, (currentSection) => ({
+      ...currentSection,
+      rows: currentSection.rows.filter((item) => item.id !== row.id),
+    }));
+    setSelected(null);
+    setError("");
+  }
+
+  function removeSeat(section, row, seat) {
+    if (lockedIds.has(seat.id)) {
+      setError("A reserved, sold, or on-hold seat cannot be removed or changed.");
+      return;
+    }
+    updateSection(section.id, (currentSection) => ({
+      ...currentSection,
+      rows: currentSection.rows.map((item) =>
+        item.id === row.id ? { ...item, seats: item.seats.filter((entry) => entry.id !== seat.id) } : item,
+      ),
+    }));
+    setSelected(null);
+    setError("");
   }
 
   function onDrag(payload) {
@@ -343,7 +376,18 @@ export function SeatDesigner({ eventId, initialLayout, action }) {
                 </div>
                 <div>
                   <label className="text-sm font-medium" htmlFor={`columns-${section.id}`}>Columns</label>
-                  <input id={`columns-${section.id}`} inputMode="numeric" value={section.columnCount} onChange={(event) => updateSection(section.id, (item) => ({ ...item, columnCount: Number(event.target.value) }))} className={fieldClass} />
+                  <input id={`columns-${section.id}`} inputMode="numeric" value={section.columnCount} onChange={(event) => {
+                    const columnCount = Number(event.target.value);
+                    if (!Number.isInteger(columnCount) || columnCount < 1 || columnCount > 40) {
+                      return;
+                    }
+                    const highest = Math.max(0, ...section.rows.flatMap((row) => row.seats.map((seat) => seat.colIndex + 1)));
+                    if (columnCount < highest) {
+                      setError("Remove seats past that column before lowering the column count.");
+                      return;
+                    }
+                    updateSection(section.id, (item) => ({ ...item, columnCount }));
+                  }} className={fieldClass} />
                 </div>
               </div>
               {section.rows.map((row) => {
@@ -356,6 +400,7 @@ export function SeatDesigner({ eventId, initialLayout, action }) {
                     </select>
                     <input aria-label={`Price for row ${row.label}`} inputMode="decimal" value={row.price ?? ""} disabled={protectedRow} onChange={(event) => updateSection(section.id, (item) => ({ ...item, rows: item.rows.map((entry) => entry.id === row.id ? { ...entry, price: event.target.value } : entry) }))} className="w-24 rounded-lg border border-line px-2 py-1 text-sm" />
                     <button type="button" className="text-sm text-brand hover:underline" onClick={() => addSeat(section, row)}>Add seat</button>
+                    <button type="button" className="text-sm text-muted hover:underline" disabled={protectedRow} onClick={() => removeRow(section, row)}>Remove row</button>
                   </div>
                 );
               })}
@@ -377,6 +422,11 @@ export function SeatDesigner({ eventId, initialLayout, action }) {
                   {currentSeat.status === "locked" ? <option value="locked">On hold</option> : null}
                 </select>
               </div>
+              {lockedIds.has(currentSeat.id) ? null : (
+                <button type="button" className="mt-3 text-sm text-muted hover:underline" onClick={() => removeSeat(currentSection, currentRow, currentSeat)}>
+                  Remove this seat
+                </button>
+              )}
             </div>
           ) : null}
         </div>
