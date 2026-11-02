@@ -7,7 +7,15 @@ import { buttonClass, fieldClass } from "@/components/formStyles";
 import { formatPeso } from "@/lib/seatRules";
 import { MAX_SEATS_PER_RESERVATION } from "@/lib/reservationRules";
 
-export function TicketPicker({ eventId, ticketPrice, remaining, canReserve, signedIn = false, loginHref = "/login" }) {
+export function TicketPicker({
+  eventId,
+  ticketPrice,
+  remaining,
+  canReserve,
+  signedIn = false,
+  loginHref = "/login",
+  blockedMessage = "",
+}) {
   const [quantity, setQuantity] = useState(1);
   const full = remaining <= 0;
   const max = Math.min(MAX_SEATS_PER_RESERVATION, Math.max(remaining, 0));
@@ -41,7 +49,9 @@ export function TicketPicker({ eventId, ticketPrice, remaining, canReserve, sign
       ) : null}
       {full ? <p className="mt-3 text-sm text-muted">This show is full, so it cannot be reserved.</p> : null}
       {!canReserve && !full ? (
-        signedIn ? (
+        blockedMessage ? (
+          <p className="mt-3 text-sm text-muted">{blockedMessage}</p>
+        ) : signedIn ? (
           <p className="mt-3 text-sm text-muted">Only an active customer account can hold tickets.</p>
         ) : (
           <p className="mt-3 text-sm text-muted">

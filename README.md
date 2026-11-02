@@ -55,7 +55,16 @@ Seats, reservations, payments, tickets, and SMS are later phases.
 - Expired holds are released when seats are read, when a new hold is attempted, or by opening `/api/reservations/release`
 - The public seat map polls every few seconds, so other people see holds without refreshing
 - A customer page shows the reservation status, snapshot prices, and stored total
-- No payment proof, staff booking, tickets, or SMS
+- Online booking is accepted only from 8:00 AM to 8:00 PM, and it closes 3 hours before the show. The earlier time applies.
+- No payment proof, tickets, or SMS
+
+## What Phase 7 includes
+
+- Staff can record an admin or walk-in sale from the event's booking screen
+- A seated show uses specific seats. General admission uses a ticket count.
+- The sale is marked sold immediately. It does not use the five-minute hold or the online time window.
+- The record stores the source and the staff member who created it
+- No payment screenshot, QR ticket, or SMS
 
 ## 1. Install the tools
 
@@ -201,6 +210,7 @@ No new SQL. Phase 3 already stores the phone number.
 
 1. Run `supabase/migrations/20261025120000_create_reservations.sql` once in the Supabase SQL Editor, after the Phase 5 file. Paste the whole file and click Run. Do not run it twice, and do not drop tables. `supabase db push` also works if the project is linked.
 2. After that, run `supabase/migrations/20261026120000_seat_tiers_and_admission.sql` the same way. This adds seat tiers, saved drag positions, seated or general admission, and audience capacity. It does not drop tables. If a first run stopped with "column already exists", paste the updated file and run it again. It skips columns that are already there.
+3. Then run `supabase/migrations/20261027120000_booking_rules_and_admin_bookings.sql` once the same way. This adds the 8:00 AM to 8:00 PM online window, the 3-hour cutoff, and admin or walk-in sales. It does not drop tables. Do not run it before the Phase 6 file.
 2. To change the hold length, run `update public.reservation_settings set hold_minutes = 5 where id = 1;` in the SQL Editor. New holds use the new number. Old holds keep the time they were given.
 3. Publish an event that has at least two available seats with different prices.
 4. Log in as a customer. Open the event, then **Choose seats**. Select both seats and click **Hold these seats**.

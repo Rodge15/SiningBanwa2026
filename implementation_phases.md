@@ -89,20 +89,26 @@ This document divides the project into manageable development phases for a **new
 - Update the seat map live by polling the server every few seconds.
 - Create a reservation with its reservation items in one transaction.
 - Show reservation status and details to the customer.
+- Accept online bookings only from 8:00 AM to 8:00 PM, using Asia/Manila time.
+- Close online booking 3 hours before the show starts. The close time is the earlier of 8:00 PM and 3 hours before the start.
+- Keep a hold in place after payment proof is recorded, until an administrator decides. The "I've paid" button itself is Phase 8. The same clock will gate that later payment submission.
 
-**Completion check:** Multiple seats can be reserved together, totals are correct, expired locks are released, the seat map updates for other users without refreshing, and the same seat cannot be booked twice.
+**Completion check:** Multiple seats can be reserved together, totals are correct, expired locks are released, the seat map updates for other users without refreshing, and the same seat cannot be booked twice. A booking outside 8:00 AM to 8:00 PM, or inside the 3-hour cutoff, is rejected by the server.
 
 ## Phase 7: Admin and Manual Booking
-**Goal:** Allow authorized staff to book tickets on behalf of customers.
+**Goal:** Allow authorized staff to book tickets on behalf of customers, including walk-in sales.
 
-- Add a booking function in the admin/staff area.
-- Find an existing customer or enter the customer's required details.
-- Select the event and seats, and calculate the total using the saved seat prices.
-- Record the booking source as `admin` and store the staff member who created it.
-- Apply the same seat availability, locking, and duplicate-booking checks used for online reservations.
-- Make admin-created bookings visible in reservation records and reports.
+- Add a booking screen in the admin/staff area. The staff member selects the show.
+- For a seated show, the staff member selects specific seats. For general admission, the staff member enters a ticket count. There is no seat map for general admission.
+- Pick an existing customer account, or enter the customer's name and contact details when the person has no account.
+- Mark the seats or tickets sold immediately. Do not use the five-minute hold, and do not ask for a payment screenshot.
+- Record the source as `admin` or `walk_in`, and store the staff member who created the booking.
+- Update the remaining count, seat map, and Full status for other users through the existing poll. Do not add a live socket.
+- Do not apply the 8:00 AM to 8:00 PM window or the 3-hour online cutoff to admin or walk-in bookings.
+- Use the same Postgres locking rule as online booking: `SELECT ... FOR UPDATE` inside a transaction, so two staff members cannot sell the same seat.
+- Make these bookings visible in the show's reservation records. The total comes from database prices, not from the browser.
 
-**Completion check:** Staff can create a valid booking, and the system records who created it and how it was booked.
+**Completion check:** Staff can sell seats or tickets immediately, the record shows the source and the staff creator, and a second sale of the same seat is rejected. Online time limits do not block this screen.
 
 ## Phase 8: Payment Submission and Verification
 **Goal:** Track payments and prevent unverified payments from being treated as completed sales.

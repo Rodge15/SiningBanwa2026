@@ -30,7 +30,14 @@ function shownPrice(section, seat, row) {
   return Number(seat.livePrice);
 }
 
-export function SeatPicker({ eventId, initialSections, canReserve, signedIn = false, loginHref = "/login" }) {
+export function SeatPicker({
+  eventId,
+  initialSections,
+  canReserve,
+  signedIn = false,
+  loginHref = "/login",
+  blockedMessage = "",
+}) {
   const [sections, setSections] = useState(initialSections);
   const [selected, setSelected] = useState([]);
 
@@ -104,6 +111,8 @@ export function SeatPicker({ eventId, initialSections, canReserve, signedIn = fa
               Hold these seats
             </button>
           </form>
+        ) : blockedMessage ? (
+          <p className="mt-3 text-sm text-muted">{blockedMessage}</p>
         ) : signedIn ? (
           <p className="mt-3 text-sm text-muted">Only an active customer account can hold seats.</p>
         ) : (

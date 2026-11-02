@@ -75,6 +75,9 @@ async function EditEvent({ params, searchParams }) {
             Design seats
           </Link>
         )}
+        <Link href={`/events/manage/${data.id}/book`} className={`${buttonClass} mt-4 w-full`}>
+          Record a booking
+        </Link>
         <h2 className="mt-8 text-lg font-semibold">Status</h2>
         <p className="mt-2 text-sm leading-6 text-muted">
           Publish makes the event public. Cancel keeps the record and hides it from guests.

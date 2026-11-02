@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { LiveAvailability } from "@/components/LiveAvailability";
 import { LiveSeatMap } from "@/components/LiveSeatMap";
 import { eventSetupMessage, getVisibleEvent, isMissingEventTable } from "@/lib/events";
 import { attachAudience } from "@/lib/audience";
@@ -75,7 +76,6 @@ async function EventDetails({ params }) {
         ) : null}
         <div className="space-y-3 border-t border-line pt-4">
           <h2 className="text-xl font-semibold">{data.admission_type === "general" ? "Tickets" : "Seating layout"}</h2>
-          <p className="text-sm font-medium">{availability?.label || "Availability is not ready yet."}</p>
           {data.admission_type === "general" ? (
             <p className="text-sm text-muted">This show does not use a seat map. Ticket price: {formatPeso(data.ticket_price)}.</p>
           ) : (
@@ -88,15 +88,12 @@ async function EventDetails({ params }) {
           {data.admission_type !== "general" && !layout.error && layout.data.sections.length > 0 ? (
             <LiveSeatMap eventId={data.id} initialSections={layout.data.sections} />
           ) : null}
-          {availability?.full ? (
-            <p className="text-sm text-muted">This show is Full, so customers cannot reserve it.</p>
-          ) : (
-            <p>
-              <Link href={`/events/${data.id}/reserve`} className="text-sm text-brand hover:underline">
-                {data.admission_type === "general" ? "Reserve tickets" : "Choose seats"}
-              </Link>
-            </p>
-          )}
+          <LiveAvailability
+            eventId={data.id}
+            initial={availability}
+            reserveHref={`/events/${data.id}/reserve`}
+            reserveLabel={data.admission_type === "general" ? "Reserve tickets" : "Choose seats"}
+          />
         </div>
       </div>
     </article>

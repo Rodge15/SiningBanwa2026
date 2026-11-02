@@ -4,8 +4,8 @@ import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { isUuid } from "@/lib/eventRules";
 import { isMissingReservationSetup, reservationSetupMessage } from "@/lib/reservations";
-import { validateSeatIds } from "@/lib/reservationRules";
-import { ROLES } from "@/lib/roles";
+import { validateSeatIds, validateStaffBooking } from "@/lib/reservationRules";
+import { EVENT_MANAGER_ROLES, ROLES } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
 
 function fail(path, message) {
@@ -83,6 +83,67 @@ export async function createGeneralAdmissionReservation(formData) {
   }
 
   succeed(`/account/reservations/${data}`, "Tickets are on hold. Payment is not part of this step.");
+}
+
+export async function searchBookingCustomers(query) {
+  await requireRole(EVENT_MANAGER_ROLES);
+  const text = String(query || "").trim();
+
+  if (text.length < 2) {
+    return { matches: [], message: "Type at least 2 characters." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("search_booking_customers", { p_query: text });
+
+  if (error) {
+    return { matches: [], message: readableDbError(error) };
+  }
+
+  return { matches: data || [], message: "" };
+}
+
+export async function createStaffReservation(formData) {
+  await requireRole(EVENT_MANAGER_ROLES);
+  const eventId = String(formData.get("eventId") || "");
+  const path = isUuid(eventId) ? `/events/manage/${eventId}/book` : "/events/manage";
+  const checked = validateStaffBooking({
+    source: formData.get("source"),
+    customerMode: formData.get("customerMode"),
+    customerId: formData.get("customerId"),
+    customerName: formData.get("customerName"),
+    customerPhone: formData.get("customerPhone"),
+    customerEmail: formData.get("customerEmail"),
+    admissionType: formData.get("admissionType"),
+    seatIds: formData.get("seatIds"),
+    quantity: Number(formData.get("quantity")),
+  });
+
+  if (!isUuid(eventId)) {
+    fail(path, "That event could not be found.");
+  }
+
+  if (!checked.ok) {
+    fail(path, checked.message);
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("create_staff_reservation", {
+    p_event_id: eventId,
+    p_source: checked.value.source,
+    p_customer_id: checked.value.customerId,
+    p_customer_name: checked.value.customerName,
+    p_customer_phone: checked.value.customerPhone,
+    p_customer_email: checked.value.customerEmail,
+    p_seat_ids: checked.value.seatIds,
+    p_quantity: checked.value.quantity,
+  });
+
+  if (error || !isUuid(data)) {
+    fail(path, error ? readableDbError(error) : "The booking could not be saved.");
+  }
+
+  succeed(path, "The booking was saved and marked sold. No hold and no payment screenshot were used.");
 }
 
 export async function cancelReservation(formData) {

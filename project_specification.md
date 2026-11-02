@@ -137,8 +137,12 @@ Seat states: `available`, `locked`, `reserved`, `sold`, and `blocked`. The final
 -   If the customer clicks "I've paid" before the lock expires, the seats remain held until the admin approves or rejects the payment, even if the five minutes have passed.
 -   Expired locks (for seats with no submitted payment proof) must be released by a reliable server-side process: whenever seat availability is read or a reservation is attempted, and optionally by a scheduled cleanup.
 -   The system must prevent duplicate or conflicting reservations.
--   Reservations must distinguish online bookings from admin/manual bookings.
+-   Online bookings are accepted only from 8:00 AM to 8:00 PM, Asia/Manila time.
+-   Online booking closes three hours before the show starts. The earlier of 8:00 PM and three hours before the start applies. The same clock will apply to payment submission in that later phase.
+-   If payment proof is recorded, the hold stays until an administrator decides, even after the five minutes.
+-   Reservations must distinguish online bookings from admin and walk-in bookings.
 -   Manual bookings must record the staff member who created them.
+-   Admin and walk-in bookings mark seats or tickets sold immediately. They do not use the five-minute hold, and they are not blocked by the online time window.
 -   Reservation statuses: pending, awaiting payment, payment verification, confirmed, rejected, cancelled, and expired.
 -   Reservation totals must be calculated and validated on the server.
 
@@ -233,24 +237,26 @@ Where practical, reports should support event and date-range filters. Dashboard 
 ### 6.2 Online Reservation
 
 1.  Customer selects a published event.
-2.  Customer views the seating layout and prices.
-3.  Customer selects available seats.
-4.  The system validates availability and temporarily locks the seats for five minutes.
-5.  The system calculates the total using database prices.
-6.  Customer pays to the admin's QR code and clicks "I've paid," submitting a reference number and screenshot. The seats stay held.
-7.  The admin checks the payment in their own app and approves or rejects it in the dashboard.
-8.  If approved, the reservation is confirmed, the seats are sold, and the customer's QR ticket is shown and can be downloaded.
-9.  If rejected, the customer is notified and may resubmit.
-10. SMS notifications are sent through UniSMS (added in the notifications phase).
+2.  Customer views the seating layout and prices, or a ticket count for general admission.
+3.  The server accepts the booking only from 8:00 AM to 8:00 PM, and only when the show starts more than three hours later. The earlier close time applies.
+4.  Customer selects available seats or a ticket count.
+5.  The system validates availability and temporarily locks the seats for five minutes.
+6.  The system calculates the total using database prices.
+7.  Customer pays to the admin's QR code and clicks "I've paid," submitting a reference number and screenshot. The seats stay held. Payment submission uses the same time window, and that screen is a later phase.
+8.  The admin checks the payment in their own app and approves or rejects it in the dashboard.
+9.  If approved, the reservation is confirmed, the seats are sold, and the customer's QR ticket is shown and can be downloaded.
+10. If rejected, the customer is notified and may resubmit.
+11. SMS notifications are sent through UniSMS (added in the notifications phase).
 
 ### 6.3 Admin / Manual Booking
 
-1.  Staff finds an existing customer or enters required customer information.
-2.  Staff selects the event and available seats.
-3.  The system validates availability and calculates the total.
-4.  The system records the booking source and staff creator.
-5.  Payment and confirmation follow the actual transaction.
-6.  The booking is included in reservation, ticket, attendance, and reporting workflows.
+1.  Staff selects the show. A seated show uses specific seats. General admission uses a ticket count.
+2.  Staff finds an existing customer or enters the customer's name and contact details.
+3.  The system validates availability with a row lock and calculates the total from database prices.
+4.  The seats or tickets are marked sold immediately. There is no five-minute hold and no payment screenshot.
+5.  The system records the source as admin or walk-in, and the staff member who created it.
+6.  This path is not limited to 8:00 AM to 8:00 PM, and it is not closed three hours before the show.
+7.  The booking is included in reservation records, and later in ticket, attendance, and reporting workflows.
 
 ### 6.4 Event-Day Entry
 

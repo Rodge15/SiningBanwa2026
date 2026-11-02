@@ -9,7 +9,7 @@ import { requireRole } from "@/lib/auth";
 import { formatManilaDateTime, isUuid } from "@/lib/eventRules";
 import { formatPeso } from "@/lib/seatRules";
 import { getMyReservation, isMissingReservationSetup, reservationSetupMessage } from "@/lib/reservations";
-import { reservationStatusLabel, totalsMatch } from "@/lib/reservationRules";
+import { reservationSourceLabel, reservationStatusLabel, totalsMatch } from "@/lib/reservationRules";
 import { ROLES } from "@/lib/roles";
 
 export const metadata = {
@@ -47,7 +47,7 @@ async function ReservationDetails({ params, searchParams }) {
         <p className="text-sm font-medium uppercase tracking-wide text-brand">Reservation</p>
         <h1 className="mt-1 text-3xl font-semibold">{data.eventTitle}</h1>
         <p className="mt-2 text-sm text-muted">
-          {reservationStatusLabel(data.status)} · {data.source === "online" ? "Online" : data.source} ·{" "}
+          {reservationStatusLabel(data.status)} · {reservationSourceLabel(data.source)} ·{" "}
           {formatManilaDateTime(data.createdAt)}
         </p>
       </div>
@@ -55,7 +55,7 @@ async function ReservationDetails({ params, searchParams }) {
         <QueryMessage searchParams={searchParams} />
       </Suspense>
       {canCancel && data.holdExpiresAt ? <HoldCountdown expiresAt={data.holdExpiresAt} /> : null}
-      {data.ticketQuantity > 0 ? <p className="text-sm">Tickets held: {data.ticketQuantity}</p> : null}
+      {data.ticketQuantity > 0 ? <p className="text-sm">Tickets: {data.ticketQuantity}</p> : null}
       <ul className="space-y-1 text-sm">
         {data.items.map((item) => (
           <li key={item.id}>

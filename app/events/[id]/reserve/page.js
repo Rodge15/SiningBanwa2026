@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { QueryMessage } from "@/components/QueryMessage";
 import { SeatPicker } from "@/components/SeatPicker";
 import { TicketPicker } from "@/components/TicketPicker";
+import { onlineSalesClosedReason } from "@/lib/bookingWindow";
 import { attachAudience } from "@/lib/audience";
 import { getCurrentProfile } from "@/lib/auth";
 import { isUuid } from "@/lib/eventRules";
@@ -40,7 +41,8 @@ async function ReserveDetails({ params, searchParams }) {
   const availability = audience.events?.[0]?.availability;
   const layout = data.admission_type === "general" ? { data: { sections: [] }, error: null } : await getEventLayout(data.id);
   const { profile } = await getCurrentProfile();
-  const canReserve = Boolean(profile?.is_active && profile.role === "customer") && !availability?.full;
+  const closedReason = onlineSalesClosedReason(data.starts_at);
+  const canReserve = Boolean(profile?.is_active && profile.role === "customer") && !availability?.full && !closedReason;
   const loginHref = `/login?next=${encodeURIComponent(`/events/${data.id}/reserve`)}`;
 
   return (
@@ -66,6 +68,7 @@ async function ReserveDetails({ params, searchParams }) {
         </p>
       ) : null}
       {availability?.full ? <p className="text-sm text-muted">This show is Full, so it cannot be reserved.</p> : null}
+      {closedReason ? <p className="text-sm text-muted">{closedReason}</p> : null}
       {data.admission_type === "general" && !availability?.full ? (
         <TicketPicker
           eventId={data.id}
@@ -74,6 +77,7 @@ async function ReserveDetails({ params, searchParams }) {
           canReserve={canReserve}
           signedIn={Boolean(profile)}
           loginHref={loginHref}
+          blockedMessage={closedReason}
         />
       ) : null}
       {data.admission_type !== "general" && !layout.error && layout.data.sections.length === 0 ? (
@@ -86,6 +90,7 @@ async function ReserveDetails({ params, searchParams }) {
           canReserve={canReserve}
           signedIn={Boolean(profile)}
           loginHref={loginHref}
+          blockedMessage={closedReason}
         />
       ) : null}
     </div>

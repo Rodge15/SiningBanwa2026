@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
+import { summarizeAudience } from "@/lib/audienceRules";
+import { getCurrentProfile } from "@/lib/auth";
 import { isUuid } from "@/lib/eventRules";
 import { getVisibleEvent } from "@/lib/events";
 import { isMissingReservationSetup, releaseExpiredHolds, reservationSetupMessage } from "@/lib/reservations";
+import { EVENT_MANAGER_ROLES } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -22,8 +25,17 @@ export async function GET(_request, { params }) {
 
   const event = await getVisibleEvent(id);
 
-  if (event.error || !event.data || event.data.status !== "published") {
+  if (event.error || !event.data || event.data.status === "cancelled") {
     return json({ seats: [] }, 404);
+  }
+
+  if (event.data.status !== "published") {
+    const { profile } = await getCurrentProfile();
+    const isManager = profile?.is_active && EVENT_MANAGER_ROLES.includes(profile.role);
+
+    if (!isManager) {
+      return json({ seats: [] }, 404);
+    }
   }
 
   const supabase = await createClient();
@@ -59,16 +71,32 @@ export async function GET(_request, { params }) {
 
   const sectionPrices = new Map((sections.data || []).map((section) => [section.id, Number(section.default_price)]));
   const rowPrices = new Map((rows.data || []).map((row) => [row.id, Number(row.price)]));
+  const seats = (data || []).map((seat) => ({
+    id: seat.id,
+    status: seat.status,
+    price:
+      seat.price_override === null
+        ? rowPrices.get(seat.row_id) ?? sectionPrices.get(seat.section_id) ?? null
+        : Number(seat.price_override),
+    event_id: id,
+  }));
+  let ticketRows = await supabase.rpc("event_ticket_counts", { p_event_ids: [id] });
+
+  if (ticketRows.error && isMissingReservationSetup(ticketRows.error)) {
+    ticketRows = await supabase.from("reservations").select("event_id, ticket_quantity, status").eq("event_id", id);
+  }
+
+  const summary = summarizeAudience(event.data, seats, ticketRows.data || []);
 
   return json({
-    seats: (data || []).map((seat) => ({
+    seats: seats.map((seat) => ({
       id: seat.id,
       status: seat.status,
-      price:
-        seat.price_override === null
-          ? rowPrices.get(seat.row_id) ?? sectionPrices.get(seat.section_id) ?? null
-          : Number(seat.price_override),
+      price: seat.price,
     })),
+    remaining: summary.remaining,
+    full: summary.full,
+    label: summary.label,
     serverTime: new Date().toISOString(),
   });
 }
