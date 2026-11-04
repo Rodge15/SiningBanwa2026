@@ -1,4 +1,4 @@
-﻿-- Seated layout save sets audience capacity to the number of designed seats.
+-- Seated layout save sets audience capacity to the number of designed seats.
 -- This file does not drop tables.
 --
 -- Where to run it:
