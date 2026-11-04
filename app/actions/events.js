@@ -244,9 +244,7 @@ export async function updateEvent(formData) {
     fail(path, "General admission tickets are still held. Wait until those holds end before switching to seated.");
   }
 
-  if (parsed.value.admissionType === "seated" && seats > parsed.value.audienceCapacity) {
-    fail(path, "Audience capacity cannot be lower than the number of seats already on the map.");
-  }
+  // A seated show's capacity is the saved seat map, not the number typed before the map existed.
 
   if (parsed.value.admissionType === "general" && heldTickets > parsed.value.audienceCapacity) {
     fail(path, "Audience capacity cannot be lower than the tickets already reserved.");
@@ -261,7 +259,7 @@ export async function updateEvent(formData) {
       starts_at: parsed.value.startsAt,
       poster_path: nextPosterPath,
       admission_type: parsed.value.admissionType,
-      audience_capacity: parsed.value.audienceCapacity,
+      audience_capacity: parsed.value.admissionType === "seated" && seats > 0 ? seats : parsed.value.audienceCapacity,
       ticket_price: parsed.value.admissionType === "general" ? parsed.value.ticketPrice : null,
     })
     .eq("id", id);

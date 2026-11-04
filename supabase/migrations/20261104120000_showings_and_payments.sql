@@ -423,7 +423,6 @@ security definer
 set search_path = public
 as $$
 declare
-  v_capacity integer;
   v_type text;
   v_seat_count integer;
 begin
@@ -431,8 +430,8 @@ begin
     raise exception 'Only an administrator or staff member can save a seat layout.';
   end if;
 
-  select admission_type, audience_capacity
-  into v_type, v_capacity
+  select admission_type
+  into v_type
   from public.events
   where id = p_event_id
   for update;
@@ -456,8 +455,8 @@ begin
     raise exception 'Add at least one seat before saving the layout.';
   end if;
 
-  if v_seat_count > v_capacity then
-    raise exception 'The layout has more seats than the audience capacity.';
+  if v_seat_count > 2000 then
+    raise exception 'A layout can have at most 2000 seats.';
   end if;
 
   if exists (
@@ -642,15 +641,18 @@ begin
 
   perform public.sync_showing_seats(p_event_id);
 
+  -- The designed seats are the capacity. Do not reject a map that is larger than the old number.
   update public.events
-  set layout_saved_at = case
-    when exists (
-      select 1 from public.event_seats seat
-      where seat.event_id = p_event_id
-        and seat.status <> 'blocked'
-    ) then now()
-    else null
-  end
+  set
+    audience_capacity = v_seat_count,
+    layout_saved_at = case
+      when exists (
+        select 1 from public.event_seats seat
+        where seat.event_id = p_event_id
+          and seat.status <> 'blocked'
+      ) then now()
+      else null
+    end
   where id = p_event_id;
 exception
   when unique_violation then

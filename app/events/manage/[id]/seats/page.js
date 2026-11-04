@@ -71,7 +71,8 @@ async function Designer({ params, searchParams }) {
         <h1 className="mt-1 text-3xl font-semibold">Design seats</h1>
         <p className="mt-2 text-sm text-muted">
           {data.title}. Drag a section, row, or seat on the canvas. Set each row&apos;s tier and price. A booked or
-          sold seat cannot be moved. Save, then refresh to confirm the same positions and colors.
+          sold seat cannot be moved. Saving sets the audience capacity to the number of seats, then refresh to confirm
+          the same positions and colors. A seated event can be published only after this save succeeds.
         </p>
       </div>
       <Suspense fallback={null}>

@@ -23,7 +23,7 @@ export function AdmissionFields({ event }) {
           <option value="general">General admission</option>
         </select>
         <p className="mt-1 text-xs text-muted">
-          Seated events use the seat map. General admission has no seat map. Customers reserve a number of tickets.
+          Seated events use the seat map. Saving that map sets the audience capacity to the number of seats. General admission has no seat map. Customers reserve a number of tickets.
         </p>
       </div>
       <div>

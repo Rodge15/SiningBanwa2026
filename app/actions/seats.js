@@ -27,6 +27,10 @@ function readableDbError(error) {
     return message;
   }
 
+  if (/more seats than the audience capacity/i.test(message)) {
+    return "The seat map has more seats than the old audience capacity. In the Supabase SQL Editor, run supabase/migrations/20261104140000_layout_sets_capacity.sql once, then save the layout again.";
+  }
+
   if (/position|pos_x|pos_y/i.test(message)) {
     return "A section, row, or seat is too far down the canvas. Move it up, then save again.";
   }
