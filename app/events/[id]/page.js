@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { LiveAvailability } from "@/components/LiveAvailability";
 import { LiveSeatMap } from "@/components/LiveSeatMap";
+import { ShowingPicker } from "@/components/ShowingPicker";
 import { eventSetupMessage, getVisibleEvent, isMissingEventTable } from "@/lib/events";
 import { attachAudience } from "@/lib/audience";
 import { formatManilaDateTime, isUuid } from "@/lib/eventRules";
@@ -88,11 +89,12 @@ async function EventDetails({ params }) {
           {data.admission_type !== "general" && !layout.error && layout.data.sections.length > 0 ? (
             <LiveSeatMap eventId={data.id} initialSections={layout.data.sections} />
           ) : null}
+          <ShowingPicker eventId={data.id} showings={availability?.showings || []} basePath={`/events/${data.id}/reserve`} />
           <LiveAvailability
             eventId={data.id}
             initial={availability}
-            reserveHref={`/events/${data.id}/reserve`}
-            reserveLabel={data.admission_type === "general" ? "Reserve tickets" : "Choose seats"}
+            reserveHref={availability?.layoutMissing ? "" : `/events/${data.id}/reserve`}
+            reserveLabel={data.admission_type === "general" ? "Choose a showtime" : "Choose a showtime"}
           />
         </div>
       </div>

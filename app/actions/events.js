@@ -6,7 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth";
 import { EVENT_MANAGER_ROLES } from "@/lib/roles";
 import { eventLoadMessage, eventSetupMessage, isMissingEventTable } from "@/lib/events";
-import { isEventStatus, isUuid, validateEventInput, validatePosterFile } from "@/lib/eventRules";
+import { isEventStatus, isUuid, toManilaInputValue, validateEventInput, validatePosterFile } from "@/lib/eventRules";
+import { isMissingShowingSetup, showingSetupMessage, validateSchedule } from "@/lib/showings";
 
 function fail(path, message) {
   redirect(`${path}?error=${encodeURIComponent(message)}`);
@@ -76,6 +77,34 @@ async function removeStoredPoster(path) {
   await admin.storage.from("event-posters").remove([path]);
 }
 
+function readSchedule(formData, path) {
+  const schedule = validateSchedule({
+    startDate: formData.get("runStart"),
+    days: Number(formData.get("runDays")),
+    times: formData.get("showTimes"),
+  });
+
+  if (!schedule.ok) {
+    fail(path, schedule.message);
+  }
+
+  return schedule.value;
+}
+
+async function saveShowings(supabase, eventId, schedule, path) {
+  const { error } = await supabase.rpc("replace_event_showings", {
+    p_event_id: eventId,
+    p_starts: schedule.starts,
+    p_run_start: schedule.startDate,
+    p_run_end: schedule.endDate,
+    p_times: schedule.times,
+  });
+
+  if (error) {
+    fail(path, isMissingShowingSetup(error) ? showingSetupMessage() : error.message);
+  }
+}
+
 async function loadManagedEvent(id, path) {
   if (!isUuid(id)) {
     fail(path, "That event could not be found.");
@@ -102,11 +131,12 @@ async function loadManagedEvent(id, path) {
 export async function createEvent(formData) {
   const path = "/events/manage/new";
   const user = await requireManager(path);
+  const schedule = readSchedule(formData, path);
   const parsed = validateEventInput({
     title: formData.get("title"),
     description: formData.get("description"),
     venue: formData.get("venue"),
-    startsAt: formData.get("startsAt"),
+    startsAt: toManilaInputValue(schedule.starts[0]),
     admissionType: formData.get("admissionType"),
     audienceCapacity: formData.get("audienceCapacity"),
     ticketPrice: formData.get("ticketPrice"),
@@ -136,6 +166,8 @@ export async function createEvent(formData) {
     fail(path, isMissingEventTable(error) ? eventSetupMessage() : eventLoadMessage(error) === "Events could not be loaded." ? error.message : eventLoadMessage(error));
   }
 
+  await saveShowings(supabase, id, schedule, `/events/manage/${id}`);
+
   if (!poster) {
     succeed(`/events/manage/${id}`, "Draft event saved. It stays hidden until you publish it.");
   }
@@ -163,11 +195,12 @@ export async function updateEvent(formData) {
   const id = String(formData.get("id") || "");
   const path = isUuid(id) ? `/events/manage/${id}` : "/events/manage";
   await requireManager(path);
+  const schedule = readSchedule(formData, path);
   const parsed = validateEventInput({
     title: formData.get("title"),
     description: formData.get("description"),
     venue: formData.get("venue"),
-    startsAt: formData.get("startsAt"),
+    startsAt: toManilaInputValue(schedule.starts[0]),
     admissionType: formData.get("admissionType"),
     audienceCapacity: formData.get("audienceCapacity"),
     ticketPrice: formData.get("ticketPrice"),
@@ -195,7 +228,7 @@ export async function updateEvent(formData) {
     nextPosterPath = null;
   }
 
-  const heldStatuses = ["pending", "awaiting_payment", "payment_verification", "confirmed"];
+  const heldStatuses = ["pending", "awaiting_payment", "payment_verification", "confirmed", "rejected"];
   const [seatCount, ticketHolds] = await Promise.all([
     supabase.from("event_seats").select("id", { count: "exact", head: true }).eq("event_id", id),
     supabase.from("reservations").select("ticket_quantity").eq("event_id", id).in("status", heldStatuses),
@@ -245,6 +278,7 @@ export async function updateEvent(formData) {
     await removeStoredPoster(event.poster_path);
   }
 
+  await saveShowings(supabase, id, schedule, path);
   succeed(path, "Event details saved.");
 }
 
@@ -259,10 +293,28 @@ export async function updateEventStatus(formData) {
   }
 
   const { supabase } = await loadManagedEvent(id, path);
+
+  if (status === "published") {
+    const showings = await supabase.from("showings").select("id").eq("event_id", id);
+    const saved = await supabase.from("events").select("admission_type, layout_saved_at").eq("id", id).maybeSingle();
+
+    if (showings.error || saved.error) {
+      fail(path, isMissingShowingSetup(showings.error || saved.error) ? showingSetupMessage() : "Showtimes could not be checked.");
+    }
+
+    if (!showings.data?.length) {
+      fail(path, "Add at least one showing before publishing.");
+    }
+
+    if (saved.data?.admission_type === "seated" && !saved.data.layout_saved_at) {
+      fail(path, "Save a seating layout before publishing this seated event. Open Design seats, then save the layout.");
+    }
+  }
+
   const { error } = await supabase.from("events").update({ status }).eq("id", id);
 
   if (error) {
-    fail(path, error.message);
+    fail(path, error.message && error.message.length < 300 ? error.message : "The status could not be saved.");
   }
 
   const note =

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { isUuid } from "@/lib/eventRules";
 import { isMissingReservationSetup, reservationSetupMessage } from "@/lib/reservations";
+import { isMissingShowingSetup, showingSetupMessage } from "@/lib/showings";
 import { validateSeatIds, validateStaffBooking } from "@/lib/reservationRules";
 import { EVENT_MANAGER_ROLES, ROLES } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
@@ -19,8 +20,8 @@ function succeed(path, message) {
 function readableDbError(error) {
   const message = String(error?.message || "");
 
-  if (isMissingReservationSetup(error)) {
-    return reservationSetupMessage();
+  if (isMissingReservationSetup(error) || isMissingShowingSetup(error)) {
+    return isMissingShowingSetup(error) ? showingSetupMessage() : reservationSetupMessage();
   }
 
   if (error?.code === "P0001" && message && message.length < 300) {
@@ -33,10 +34,11 @@ function readableDbError(error) {
 export async function createReservation(formData) {
   await requireRole(["customer"]);
   const eventId = String(formData.get("eventId") || "");
-  const path = isUuid(eventId) ? `/events/${eventId}/reserve` : "/events";
+  const showingId = String(formData.get("showingId") || "");
+  const path = isUuid(eventId) ? `/events/${eventId}/reserve?showing=${showingId}` : "/events";
 
-  if (!isUuid(eventId)) {
-    fail(path, "That event could not be found.");
+  if (!isUuid(eventId) || !isUuid(showingId)) {
+    fail(isUuid(eventId) ? `/events/${eventId}/reserve` : "/events", "Choose a showing before selecting seats.");
   }
 
   const seats = validateSeatIds(String(formData.get("seatIds") || ""));
@@ -47,7 +49,7 @@ export async function createReservation(formData) {
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_online_reservation", {
-    p_event_id: eventId,
+    p_showing_id: showingId,
     p_seat_ids: seats.value,
   });
 
@@ -55,17 +57,18 @@ export async function createReservation(formData) {
     fail(path, error ? readableDbError(error) : "The reservation could not be saved.");
   }
 
-  succeed(`/account/reservations/${data}`, "Seats are on hold. Payment is not part of this step.");
+  succeed(`/account/reservations/${data}`, "Seats are on hold for 5 minutes. Submit your payment proof before the hold ends.");
 }
 
 export async function createGeneralAdmissionReservation(formData) {
   await requireRole(["customer"]);
   const eventId = String(formData.get("eventId") || "");
-  const path = isUuid(eventId) ? `/events/${eventId}/reserve` : "/events";
+  const showingId = String(formData.get("showingId") || "");
+  const path = isUuid(eventId) ? `/events/${eventId}/reserve?showing=${showingId}` : "/events";
   const quantity = Number(formData.get("quantity"));
 
-  if (!isUuid(eventId)) {
-    fail(path, "That event could not be found.");
+  if (!isUuid(eventId) || !isUuid(showingId)) {
+    fail(isUuid(eventId) ? `/events/${eventId}/reserve` : "/events", "Choose a showing before selecting tickets.");
   }
 
   if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
@@ -74,7 +77,7 @@ export async function createGeneralAdmissionReservation(formData) {
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_general_admission_reservation", {
-    p_event_id: eventId,
+    p_showing_id: showingId,
     p_quantity: quantity,
   });
 
@@ -82,7 +85,7 @@ export async function createGeneralAdmissionReservation(formData) {
     fail(path, error ? readableDbError(error) : "The reservation could not be saved.");
   }
 
-  succeed(`/account/reservations/${data}`, "Tickets are on hold. Payment is not part of this step.");
+  succeed(`/account/reservations/${data}`, "Tickets are on hold for 5 minutes. Submit your payment proof before the hold ends.");
 }
 
 export async function searchBookingCustomers(query) {
@@ -106,7 +109,8 @@ export async function searchBookingCustomers(query) {
 export async function createStaffReservation(formData) {
   await requireRole(EVENT_MANAGER_ROLES);
   const eventId = String(formData.get("eventId") || "");
-  const path = isUuid(eventId) ? `/events/manage/${eventId}/book` : "/events/manage";
+  const showingId = String(formData.get("showingId") || "");
+  const path = isUuid(eventId) ? `/events/manage/${eventId}/book?showing=${showingId}` : "/events/manage";
   const checked = validateStaffBooking({
     source: formData.get("source"),
     customerMode: formData.get("customerMode"),
@@ -119,8 +123,8 @@ export async function createStaffReservation(formData) {
     quantity: Number(formData.get("quantity")),
   });
 
-  if (!isUuid(eventId)) {
-    fail(path, "That event could not be found.");
+  if (!isUuid(eventId) || !isUuid(showingId)) {
+    fail(isUuid(eventId) ? `/events/manage/${eventId}/book` : "/events/manage", "Choose a showing before recording the sale.");
   }
 
   if (!checked.ok) {
@@ -129,7 +133,7 @@ export async function createStaffReservation(formData) {
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_staff_reservation", {
-    p_event_id: eventId,
+    p_showing_id: showingId,
     p_source: checked.value.source,
     p_customer_id: checked.value.customerId,
     p_customer_name: checked.value.customerName,

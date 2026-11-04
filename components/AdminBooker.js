@@ -21,7 +21,7 @@ function listedSeats(sections) {
   return seats;
 }
 
-export function AdminBooker({ eventId, admissionType, initialSections, ticketPrice, remaining }) {
+export function AdminBooker({ eventId, showingId, admissionType, initialSections, ticketPrice, remaining }) {
   const [sections, setSections] = useState(initialSections || []);
   const [selected, setSelected] = useState([]);
   const [source, setSource] = useState("walk_in");
@@ -87,6 +87,7 @@ export function AdminBooker({ eventId, admissionType, initialSections, ticketPri
       ) : (
         <LiveSeatMap
           eventId={eventId}
+          showingId={showingId}
           initialSections={initialSections}
           interactive
           selectAvailableOnly
@@ -138,6 +139,7 @@ export function AdminBooker({ eventId, admissionType, initialSections, ticketPri
           This marks the seats or tickets sold now. It does not use the five-minute hold, and it is not limited to the online booking hours.
         </p>
         <input type="hidden" name="eventId" value={eventId} />
+        <input type="hidden" name="showingId" value={showingId} />
         <input type="hidden" name="admissionType" value={admissionType} />
         <input type="hidden" name="customerMode" value={mode} />
         <input type="hidden" name="customerId" value={customerId} />

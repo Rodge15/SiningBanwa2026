@@ -1,6 +1,6 @@
 "use client";
 
-import { effectivePrice, effectiveTier, formatPeso, seatStatusMeta, SEAT_STATUS_META, SEAT_TIER_META } from "@/lib/seatRules";
+import { effectivePrice, effectiveTier, formatPeso, POSITION_MAX, seatStatusMeta, SEAT_STATUS_META, SEAT_TIER_META } from "@/lib/seatRules";
 
 const BOX_WIDTH = 84;
 const BOX_HEIGHT = 58;
@@ -31,7 +31,7 @@ export function SeatLegend() {
 }
 
 function clampPosition(value) {
-  return Math.max(0, Math.min(4000, Math.round(value)));
+  return Math.max(0, Math.min(POSITION_MAX, Math.round(value)));
 }
 
 function canvasSize(sections) {

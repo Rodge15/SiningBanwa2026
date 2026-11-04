@@ -30,6 +30,7 @@ function applyAvailability(sections, seats) {
 
 export function LiveSeatMap({
   eventId,
+  showingId = "",
   initialSections,
   interactive = false,
   selectedSeatIds = [],
@@ -44,7 +45,8 @@ export function LiveSeatMap({
 
     async function poll() {
       try {
-        const response = await fetch(`/api/events/${eventId}/availability`, { cache: "no-store" });
+        const query = showingId ? `?showing=${showingId}` : "";
+        const response = await fetch(`/api/events/${eventId}/availability${query}`, { cache: "no-store" });
 
         if (!response.ok || stopped) {
           return;
@@ -71,7 +73,7 @@ export function LiveSeatMap({
       stopped = true;
       clearInterval(timer);
     };
-  }, [eventId, initialSections, onSectionsChange]);
+  }, [eventId, showingId, initialSections, onSectionsChange]);
 
   return (
     <SeatMap

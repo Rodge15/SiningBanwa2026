@@ -98,7 +98,7 @@ Venue personnel must not access payment verification, user administration, or se
 ### FR-02: Event Management
 
 -   Authorized users must be able to create and edit events.
--   Event fields should include title, description, poster, date, time, venue, status, creator, and relevant timestamps.
+-   Event fields should include title, description, poster, venue, status, creator, and timestamps. The run is a start date plus a number of days. Each day has one or more showtimes. Each date and time is a showing with its own seats or ticket count.
 -   Events should support draft, published, completed, and cancelled statuses.
 -   Only published events should appear in public listings.
 -   Event cancellation or deletion must not silently damage historical transactions.
@@ -112,7 +112,7 @@ Venue personnel must not access payment verification, user administration, or se
 -   Management must be able to set a price and a tier for each section or row. Tiers are VIP, Semi-VIP, and Regular. A row may have its own price even when it shares a tier with another row.
 -   Seat boxes are colored by tier: Regular green, Semi-VIP blue, and VIP a separate color. The legend uses the same colors and labels for management and customers.
 -   Management must be able to block seats.
--   Saved layouts must persist after the page is refreshed.
+-   Saved layouts must persist after the page is refreshed. A seated event cannot be published until the layout is saved. A missing layout is shown as a message, not as Full.
 -   Existing booked or sold seats must not be moved or deleted in a way that damages confirmed bookings.
 -   Management must be able to preview the layout before customer bookings are accepted.
 -   Each event is either seated or general admission. Only seated events use the seat map. A general admission event stores a capacity and a ticket price and does not ask the customer to pick a seat.
@@ -138,7 +138,7 @@ Seat states: `available`, `locked`, `reserved`, `sold`, and `blocked`. The final
 -   Expired locks (for seats with no submitted payment proof) must be released by a reliable server-side process: whenever seat availability is read or a reservation is attempted, and optionally by a scheduled cleanup.
 -   The system must prevent duplicate or conflicting reservations.
 -   Online bookings are accepted only from 8:00 AM to 8:00 PM, Asia/Manila time.
--   Online booking closes three hours before the show starts. The earlier of 8:00 PM and three hours before the start applies. The same clock will apply to payment submission in that later phase.
+-   Online booking and payment proof close three hours before that showing starts. The earlier of 8:00 PM and three hours before the showing applies. The customer picks a showing before seats or tickets.
 -   If payment proof is recorded, the hold stays until an administrator decides, even after the five minutes.
 -   Reservations must distinguish online bookings from admin and walk-in bookings.
 -   Manual bookings must record the staff member who created them.
@@ -236,8 +236,8 @@ Where practical, reports should support event and date-range filters. Dashboard 
 
 ### 6.2 Online Reservation
 
-1.  Customer selects a published event.
-2.  Customer views the seating layout and prices, or a ticket count for general admission.
+1.  Customer selects a published event, then a showing (date and time).
+2.  Customer views that showing's seating layout and prices, or a ticket count for general admission.
 3.  The server accepts the booking only from 8:00 AM to 8:00 PM, and only when the show starts more than three hours later. The earlier close time applies.
 4.  Customer selects available seats or a ticket count.
 5.  The system validates availability and temporarily locks the seats for five minutes.
@@ -250,7 +250,7 @@ Where practical, reports should support event and date-range filters. Dashboard 
 
 ### 6.3 Admin / Manual Booking
 
-1.  Staff selects the show. A seated show uses specific seats. General admission uses a ticket count.
+1.  Staff selects the event, then one showing. A seated showing uses specific seats. General admission uses a ticket count.
 2.  Staff finds an existing customer or enters the customer's name and contact details.
 3.  The system validates availability with a row lock and calculates the total from database prices.
 4.  The seats or tickets are marked sold immediately. There is no five-minute hold and no payment screenshot.
@@ -280,10 +280,11 @@ These are logical entities. The exact schema, data types, and relationships must
 | Table / Entity        | Purpose                                                                  |
 |-----------------------|--------------------------------------------------------------------------|
 | `profiles`            | Account details linked to Supabase Auth users, roles, and account status  |
-| `events`              | Event information, schedule, venue, poster, status, creator, seated or general admission, audience capacity, and general-admission ticket price |
+| `events`              | Event information, venue, poster, status, creator, seated or general admission, audience capacity, and general-admission ticket price |
+| `showings`            | One row per date and time. Seated showings copy the saved layout into their own seat rows. General admission showings have their own capacity. |
 | `event_sections`      | Event-specific sections and rows, tier, section or row price, and saved drag positions |
 | `event_seats`         | Individual seats, section membership, labels, prices, drag positions, and availability |
-| `reservations`        | Booking, customer, status, total amount, source, and creator             |
+| `reservations`        | Booking, showing, customer, status, total amount, source, and creator    |
 | `reservation_items`   | Seats included in a reservation and historical price per seat            |
 | `payments`            | Payment submissions, amounts, references, proof, status, and verification details |
 | `tickets`             | Unique ticket identifiers, status, and issuance details                  |

@@ -9,6 +9,9 @@ import { requireRole } from "@/lib/auth";
 import { EVENT_MANAGER_ROLES } from "@/lib/roles";
 import { eventSetupMessage, getVisibleEvent, isMissingEventTable } from "@/lib/events";
 import { EVENT_STATUSES, isUuid, statusLabel } from "@/lib/eventRules";
+import { getEventLayout } from "@/lib/seats";
+import { listShowings } from "@/lib/showingQueries";
+import { scheduleFromShowings } from "@/lib/showings";
 
 export const metadata = {
   title: "Edit event | Sining Banwa",
@@ -36,6 +39,11 @@ async function EditEvent({ params, searchParams }) {
     notFound();
   }
 
+  const showings = await listShowings(data.id);
+  const schedule = scheduleFromShowings(showings.data);
+  const layout = data.admission_type === "general" ? null : await getEventLayout(data.id);
+  const layoutMissing = layout && !layout.error && layout.data.sections.every((section) => section.rows.every((row) => row.seats.length === 0));
+
   return (
     <section className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(16rem,1fr)]">
       <div className="rounded-2xl border border-line bg-card p-6 shadow-sm">
@@ -60,7 +68,12 @@ async function EditEvent({ params, searchParams }) {
               </Link>
             </p>
           ) : null}
-          <EventForm action={updateEvent} event={data} submitLabel="Save details" />
+          {layoutMissing ? (
+            <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+              The seating layout is not saved. Customers cannot book this seated event until you save it.
+            </p>
+          ) : null}
+          <EventForm action={updateEvent} event={data} schedule={schedule} submitLabel="Save details" />
         </div>
       </div>
       <aside className="h-fit rounded-2xl border border-line bg-card p-6 shadow-sm">

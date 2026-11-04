@@ -11,6 +11,7 @@ import {
   formatPeso,
   isProtectedStatus,
   nextRowLabel,
+  POSITION_MAX,
   seatLabelsInLayout,
   seatStatusMeta,
   uniqueSeatLabel,
@@ -27,7 +28,7 @@ function clamp(value) {
   if (!Number.isFinite(number)) {
     return 0;
   }
-  return Math.max(0, Math.min(4000, Math.round(number)));
+  return Math.max(0, Math.min(POSITION_MAX, Math.round(number)));
 }
 
 function seatIsLocked(seat, lockedIds) {
@@ -222,7 +223,7 @@ export function SeatDesigner({ eventId, initialLayout, action }) {
           label,
           tier: currentSection.tier || "regular",
           price: Number(currentSection.defaultPrice) || 0,
-          sortOrder: currentSection.rows.length,
+          sortOrder: currentSection.rows.reduce((highest, row) => Math.max(highest, Number(row.sortOrder) || 0), -1) + 1,
           posX: Number(currentSection.posX || 40) + 16,
           posY: Number(currentSection.posY || 40) + 40 + currentSection.rows.length * 72,
           seats: [],
@@ -438,7 +439,13 @@ export function SeatDesigner({ eventId, initialLayout, action }) {
           setError(result.message);
           return;
         }
-        event.currentTarget.elements.layout.value = JSON.stringify(result.value);
+        const field = event.currentTarget.elements.namedItem("layout");
+        if (!field) {
+          event.preventDefault();
+          setError("The seat layout form is missing its save field. Refresh the page and try again.");
+          return;
+        }
+        field.value = JSON.stringify(result.value);
       }}>
         <input type="hidden" name="eventId" value={eventId} />
         <input type="hidden" name="layout" value={layoutJson} />

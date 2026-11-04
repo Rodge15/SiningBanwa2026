@@ -9,6 +9,7 @@ import { MAX_SEATS_PER_RESERVATION } from "@/lib/reservationRules";
 
 export function TicketPicker({
   eventId,
+  showingId,
   ticketPrice,
   remaining,
   canReserve,
@@ -28,6 +29,7 @@ export function TicketPicker({
       {canReserve && !full ? (
         <form action={createGeneralAdmissionReservation} className="mt-4 space-y-3">
           <input type="hidden" name="eventId" value={eventId} />
+          <input type="hidden" name="showingId" value={showingId} />
           <label htmlFor="quantity" className="text-sm font-medium">
             Number of tickets
           </label>

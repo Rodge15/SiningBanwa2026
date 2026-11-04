@@ -27,6 +27,7 @@ This document divides the project into manageable development phases for a **new
 **Goal:** Let authorized staff manage Sining Banwa events and let the public browse published events.
 
 - Add a numbered, additive SQL migration for event records, including title, description, venue, Philippine-local start date/time, optional poster filename, status, creator, and timestamps.
+- Each event also has a run (start date and number of days) and showtimes. Each date plus time is a separate showing with its own seats or ticket count. The event start used for sorting is the earliest showing.
 - Support `draft`, `published`, `completed`, and `cancelled` statuses. Only published events appear in public listings and details; retain records by changing status instead of hard-deleting.
 - Allow administrator and staff accounts to create, edit, publish, complete, and cancel events. Customer and venue roles must not manage events.
 - Enable Row Level Security on the events table so public users can read only published events.
@@ -67,7 +68,7 @@ This document divides the project into manageable development phases for a **new
 - Create and manage seating sections, rows, and seats for seated events.
 - Set a price and a tier label for each section or row. Example: row 1 is VIP at 300 pesos, and row 2 is VIP at 250 pesos. Tiers are VIP, Semi-VIP, and Regular.
 - Color seats by tier. Regular is green, Semi-VIP is blue, and VIP has its own separate color. The seat map and the legend use the same colors and labels for management and customers.
-- Place sections, rows, and seats by dragging them on the canvas. Save those positions so the layout reloads exactly as designed.
+- Place sections, rows, and seats by dragging them on the canvas. Save those positions so the layout reloads exactly as designed. A seated event cannot be published until that layout is saved. If it is missing, say so instead of calling the show Full.
 - Mark seats as available, blocked, reserved, or sold as appropriate.
 - Provide a preview of the layout before bookings are accepted.
 - When creating an event, choose seated or general admission. A seated event uses the seat map. A general admission event has no seat map. The admin sets a capacity and one ticket price, and customers reserve a number of tickets instead of specific seats.
@@ -81,7 +82,7 @@ This document divides the project into manageable development phases for a **new
 ## Phase 6: Online Reservations and Seat Holds
 **Goal:** Allow customers to reserve available seats without double-booking.
 
-- Display available events, seating layouts, and prices. A general admission event skips the seat map and asks for a ticket count.
+- Display available events, seating layouts, and prices. The customer chooses a showing (date and time) first. A general admission showing skips the seat map and asks for a ticket count. The booking clock uses that showing's start time.
 - Allow customers to select one or more seats on a seated event, or a number of tickets on a general admission event. A full show cannot be reserved.
 - Calculate the total on the server using the selected seats' database prices; never trust prices sent by the browser.
 - Temporarily lock selected seats for five minutes (configurable) using a Postgres function that runs `SELECT ... FOR UPDATE` inside a transaction, plus a unique constraint to block duplicates.
@@ -98,7 +99,7 @@ This document divides the project into manageable development phases for a **new
 ## Phase 7: Admin and Manual Booking
 **Goal:** Allow authorized staff to book tickets on behalf of customers, including walk-in sales.
 
-- Add a booking screen in the admin/staff area. The staff member selects the show.
+- Add a booking screen in the admin/staff area. The staff member selects the event, then one showing.
 - For a seated show, the staff member selects specific seats. For general admission, the staff member enters a ticket count. There is no seat map for general admission.
 - Pick an existing customer account, or enter the customer's name and contact details when the person has no account.
 - Mark the seats or tickets sold immediately. Do not use the five-minute hold, and do not ask for a payment screenshot.
@@ -124,6 +125,7 @@ This document divides the project into manageable development phases for a **new
 - Record payment amount, method, reference, submission time, verification time, and verifying staff member.
 - Show the customer a "Payment confirmed" message on their reservation page after approval, and a "Payment rejected" message with a resubmit option after rejection.
 - Do not claim automatic payment verification; no payment-provider integration is included.
+- Run `supabase/migrations/20261104120000_showings_and_payments.sql` once in the Supabase SQL Editor. It adds showings and payment tables. It does not drop tables.
 
 **Completion check:** Seats stay held after "I've paid" until a decision; staff can approve or reject a payment; the customer sees the result on their reservation page; reports distinguish pending payments from verified payments.
 

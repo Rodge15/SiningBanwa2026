@@ -5,6 +5,8 @@ import { isUuid } from "@/lib/eventRules";
 import { getVisibleEvent } from "@/lib/events";
 import { isMissingReservationSetup, releaseExpiredHolds, reservationSetupMessage } from "@/lib/reservations";
 import { EVENT_MANAGER_ROLES } from "@/lib/roles";
+import { showingAvailability } from "@/lib/showingQueries";
+import { isMissingShowingSetup, showingSetupMessage } from "@/lib/showings";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +18,7 @@ function json(body, status = 200) {
   });
 }
 
-export async function GET(_request, { params }) {
+export async function GET(request, { params }) {
   const { id } = await params;
 
   if (!isUuid(id)) {
@@ -45,6 +47,17 @@ export async function GET(_request, { params }) {
     return json({ seats: [], message: "Seat availability could not be refreshed." }, 503);
   }
 
+  const showingId = new URL(request.url).searchParams.get("showing") || "";
+  const live = await showingAvailability(event.data, isUuid(showingId) ? showingId : "");
+
+  if (live.missing) {
+    return json({ seats: [], message: showingSetupMessage() }, 503);
+  }
+
+  if (live.error && isMissingShowingSetup(live.error)) {
+    return json({ seats: [], message: showingSetupMessage() }, 503);
+  }
+
   const { data, error } = await supabase
     .from("event_seats")
     .select("id, status, price_override, section_id, row_id")
@@ -71,31 +84,53 @@ export async function GET(_request, { params }) {
 
   const sectionPrices = new Map((sections.data || []).map((section) => [section.id, Number(section.default_price)]));
   const rowPrices = new Map((rows.data || []).map((row) => [row.id, Number(row.price)]));
+  const liveStatus = new Map((live.seats || []).map((seat) => [seat.id, seat.status]));
   const seats = (data || []).map((seat) => ({
     id: seat.id,
-    status: seat.status,
+    status: liveStatus.get(seat.id) || (seat.status === "blocked" ? "blocked" : "available"),
     price:
       seat.price_override === null
         ? rowPrices.get(seat.row_id) ?? sectionPrices.get(seat.section_id) ?? null
         : Number(seat.price_override),
     event_id: id,
   }));
-  let ticketRows = await supabase.rpc("event_ticket_counts", { p_event_ids: [id] });
+  const selected = live.selected;
+  const summaries = live.showings || [];
+  const allFull = summaries.length > 0 && summaries.every((showing) => showing.full);
+  const allMissing = summaries.length > 0 && summaries.every((showing) => showing.layoutMissing);
+  const summary = selected || {
+    remaining: summaries.reduce((total, showing) => total + Number(showing.remaining || 0), 0),
+    full: allFull && !allMissing,
+    layoutMissing: allMissing || summaries.length === 0 && event.data.admission_type !== "general",
+    label: summaries.length === 0
+      ? "No showtimes yet"
+      : allMissing
+        ? "No seats saved"
+        : allFull
+          ? "Full"
+          : `${summaries.length} showtimes`,
+  };
 
-  if (ticketRows.error && isMissingReservationSetup(ticketRows.error)) {
-    ticketRows = await supabase.from("reservations").select("event_id, ticket_quantity, status").eq("event_id", id);
+  if (!selected && event.data.admission_type === "general" && summaries.length === 0) {
+    const fallback = summarizeAudience(event.data, seats, []);
+    summary.label = fallback.label;
+    summary.full = fallback.full;
+    summary.layoutMissing = false;
   }
 
-  const summary = summarizeAudience(event.data, seats, ticketRows.data || []);
-
   return json({
-    seats: seats.map((seat) => ({
-      id: seat.id,
-      status: seat.status,
-      price: seat.price,
+    seats: showingId ? seats.map((seat) => ({ id: seat.id, status: seat.status, price: seat.price })) : [],
+    showings: summaries.map((showing) => ({
+      id: showing.id,
+      startsAt: showing.startsAt,
+      label: showing.label,
+      full: showing.full,
+      remaining: showing.remaining,
+      layoutMissing: showing.layoutMissing,
     })),
     remaining: summary.remaining,
     full: summary.full,
+    layoutMissing: Boolean(summary.layoutMissing),
     label: summary.label,
     serverTime: new Date().toISOString(),
   });

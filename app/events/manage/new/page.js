@@ -17,8 +17,7 @@ async function NewEventForm({ searchParams }) {
     <section className="mx-auto max-w-2xl rounded-2xl border border-line bg-card p-6 shadow-sm">
       <h1 className="text-2xl font-semibold">New event</h1>
       <p className="mt-2 text-sm leading-6 text-muted">
-        This saves a draft. Guests cannot see it until you publish it. The start time is Philippine
-        time.
+        This saves a draft. Set the run dates and the showtimes for each day. Guests cannot see it until you publish it. A seated event also needs a saved seat layout.
       </p>
       <div className="mt-4">
         <Suspense fallback={null}>

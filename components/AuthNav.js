@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { signOut } from "@/app/actions/auth";
 import { getCurrentProfile, getCurrentUser } from "@/lib/auth";
+import { countPendingPayments } from "@/lib/paymentQueries";
 import { EVENT_MANAGER_ROLES } from "@/lib/roles";
 import { getPublicSupabaseEnv } from "@/lib/supabase/env";
 
@@ -41,6 +42,7 @@ export async function AuthNav() {
   }
 
   const canManageEvents = Boolean(profile?.is_active && EVENT_MANAGER_ROLES.includes(profile.role));
+  const pendingPayments = canManageEvents ? await countPendingPayments() : 0;
   const isAdmin = Boolean(profile?.is_active && profile.role === "administrator");
 
   return (
@@ -48,6 +50,9 @@ export async function AuthNav() {
       {canManageEvents ? (
         <Link href="/events/manage" className="hover:text-brand">
           Manage events
+        </Link>
+        <Link href="/admin/payments" className="hover:text-brand">
+          Payments{pendingPayments > 0 ? ` (${pendingPayments})` : ""}
         </Link>
       ) : null}
       {isAdmin ? (

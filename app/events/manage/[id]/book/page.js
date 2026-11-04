@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { AdminBooker } from "@/components/AdminBooker";
 import { QueryMessage } from "@/components/QueryMessage";
+import { ShowingPicker } from "@/components/ShowingPicker";
 import { requireRole } from "@/lib/auth";
-import { attachAudience } from "@/lib/audience";
 import { formatManilaDateTime, isUuid } from "@/lib/eventRules";
 import { eventSetupMessage, getVisibleEvent, isMissingEventTable } from "@/lib/events";
 import { isMissingReservationSetup, listEventReservations, reservationSetupMessage } from "@/lib/reservations";
@@ -12,6 +12,8 @@ import { reservationSourceLabel, reservationStatusLabel } from "@/lib/reservatio
 import { EVENT_MANAGER_ROLES } from "@/lib/roles";
 import { formatPeso } from "@/lib/seatRules";
 import { getEventLayout, isMissingSeatTable, seatSetupMessage } from "@/lib/seats";
+import { showingAvailability } from "@/lib/showingQueries";
+import { isMissingShowingSetup, showingSetupMessage } from "@/lib/showings";
 
 export const metadata = {
   title: "Record a booking | Sining Banwa",
@@ -39,8 +41,10 @@ async function Booker({ params, searchParams }) {
     notFound();
   }
 
-  const audience = await attachAudience([data]);
-  const availability = audience.events?.[0]?.availability;
+  const query = await searchParams;
+  const showingId = isUuid(query?.showing) ? query.showing : "";
+  const live = await showingAvailability(data, showingId);
+  const availability = live.selected;
   const layout = data.admission_type === "general" ? { data: { sections: [] }, error: null } : await getEventLayout(data.id);
   const records = await listEventReservations(data.id);
 
@@ -50,7 +54,7 @@ async function Booker({ params, searchParams }) {
         <p className="text-sm font-medium uppercase tracking-wide text-brand">Staff booking</p>
         <h1 className="mt-1 text-3xl font-semibold">{data.title}</h1>
         <p className="mt-2 text-sm text-muted">{formatManilaDateTime(data.starts_at)}</p>
-        <p className="mt-2 text-sm font-medium">{availability?.label || "Availability is not ready yet."}</p>
+        <p className="mt-2 text-sm font-medium">{availability?.label || "Choose a showing."}</p>
         <p className="mt-2 max-w-2xl text-sm text-muted">
           Admin and walk-in sales are marked sold immediately. They are not limited to 8:00 AM–8:00 PM, and they do not close three hours before the show.
         </p>
@@ -58,19 +62,22 @@ async function Booker({ params, searchParams }) {
       <Suspense fallback={null}>
         <QueryMessage searchParams={searchParams} />
       </Suspense>
+      {live.missing || isMissingShowingSetup(live.error) ? <p className="text-sm text-red-900">{showingSetupMessage()}</p> : null}
+      <ShowingPicker eventId={data.id} showings={live.showings} basePath={`/events/manage/${data.id}/book`} selectedId={showingId} />
       {data.status === "cancelled" ? <p className="text-sm text-muted">This show is cancelled, so it cannot be booked.</p> : null}
       {layout.error ? (
         <p className="text-sm text-red-900">
           {isMissingSeatTable(layout.error) ? seatSetupMessage() : "The seating layout could not be loaded."}
         </p>
       ) : null}
-      {data.status !== "cancelled" && !layout.error ? (
+      {showingId && data.status !== "cancelled" && !layout.error && availability ? (
         <AdminBooker
           eventId={data.id}
+          showingId={showingId}
           admissionType={data.admission_type || "seated"}
           initialSections={layout.data.sections}
           ticketPrice={data.ticket_price}
-          remaining={availability?.remaining || 0}
+          remaining={availability.remaining || 0}
         />
       ) : null}
       <section className="space-y-3">

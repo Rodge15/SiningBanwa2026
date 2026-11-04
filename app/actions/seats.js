@@ -23,11 +23,19 @@ function readableDbError(error) {
     return seatSetupMessage();
   }
 
-  if (error?.code === "P0001" && message && message.length < 300) {
+  if (message && message.length < 300 && (error?.code === "P0001" || error?.code === "23505" || error?.code === "23514")) {
     return message;
   }
 
-  return "The seat layout could not be saved.";
+  if (/position|pos_x|pos_y/i.test(message)) {
+    return "A section, row, or seat is too far down the canvas. Move it up, then save again.";
+  }
+
+  if (/sort_order|same position/i.test(message)) {
+    return "Two rows cannot share the same position. Remove the extra row and add it again.";
+  }
+
+  return message && message.length < 300 ? message : "The seat layout could not be saved.";
 }
 
 export async function saveSeatLayout(formData) {

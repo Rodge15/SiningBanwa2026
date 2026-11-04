@@ -1,8 +1,8 @@
 import { AdmissionFields } from "@/components/AdmissionFields";
+import { ShowScheduleFields } from "@/components/ShowScheduleFields";
 import { buttonClass, fieldClass } from "@/components/formStyles";
-import { toManilaInputValue } from "@/lib/eventRules";
 
-export function EventForm({ action, event, submitLabel }) {
+export function EventForm({ action, event, schedule, submitLabel }) {
   return (
     <form action={action} className="space-y-4">
       {event ? <input type="hidden" name="id" value={event.id} /> : null}
@@ -49,19 +49,7 @@ export function EventForm({ action, event, submitLabel }) {
           className={fieldClass}
         />
       </div>
-      <div>
-        <label htmlFor="startsAt" className="text-sm font-medium">
-          Start date and time (Philippine time)
-        </label>
-        <input
-          id="startsAt"
-          name="startsAt"
-          type="datetime-local"
-          required
-          defaultValue={event ? toManilaInputValue(event.starts_at) : ""}
-          className={fieldClass}
-        />
-      </div>
+      <ShowScheduleFields initial={schedule} />
       <AdmissionFields event={event} />
       <div>
         <label htmlFor="poster" className="text-sm font-medium">

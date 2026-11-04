@@ -32,6 +32,7 @@ function shownPrice(section, seat, row) {
 
 export function SeatPicker({
   eventId,
+  showingId,
   initialSections,
   canReserve,
   signedIn = false,
@@ -80,6 +81,7 @@ export function SeatPicker({
     <div className="space-y-4">
       <LiveSeatMap
         eventId={eventId}
+        showingId={showingId}
         initialSections={initialSections}
         interactive={canReserve}
         selectAvailableOnly
@@ -106,6 +108,7 @@ export function SeatPicker({
         {canReserve ? (
           <form action={createReservation} className="mt-4">
             <input type="hidden" name="eventId" value={eventId} />
+            <input type="hidden" name="showingId" value={showingId} />
             <input type="hidden" name="seatIds" value={JSON.stringify(selected)} />
             <button type="submit" className={buttonClass} disabled={chosen.length === 0}>
               Hold these seats
