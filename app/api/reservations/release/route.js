@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { isMissingReservationSetup, reservationSetupMessage } from "@/lib/reservations";
 import { createClient } from "@/lib/supabase/server";
 
-export const dynamic = "force-dynamic";
-
 export async function GET() {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("release_expired_seat_holds");

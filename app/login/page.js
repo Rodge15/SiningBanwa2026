@@ -9,18 +9,13 @@ export const metadata = {
   title: "Log in | Sining Banwa",
 };
 
-export default async function LoginPage({ searchParams }) {
+async function LoginForm({ searchParams }) {
   const query = await searchParams;
   const next = typeof query.next === "string" ? query.next : "";
 
   return (
-    <AuthCard
-      title="Log in"
-      description="Use the email and password from your Supabase account."
-    >
-      <Suspense fallback={null}>
-        <QueryMessage searchParams={Promise.resolve(query)} />
-      </Suspense>
+    <>
+      <QueryMessage searchParams={Promise.resolve(query)} />
       <form action={signIn} className="space-y-4">
         <input type="hidden" name="next" value={next} />
         <div>
@@ -57,6 +52,19 @@ export default async function LoginPage({ searchParams }) {
           Create an account
         </Link>
       </p>
+    </>
+  );
+}
+
+export default function LoginPage({ searchParams }) {
+  return (
+    <AuthCard
+      title="Log in"
+      description="Use the email and password from your Supabase account."
+    >
+      <Suspense fallback={null}>
+          <LoginForm searchParams={searchParams} />
+      </Suspense>
     </AuthCard>
   );
 }

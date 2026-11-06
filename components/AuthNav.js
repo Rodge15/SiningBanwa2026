@@ -48,12 +48,14 @@ export async function AuthNav() {
   return (
     <div className="flex items-center gap-3 text-sm">
       {canManageEvents ? (
-        <Link href="/events/manage" className="hover:text-brand">
-          Manage events
-        </Link>
-        <Link href="/admin/payments" className="hover:text-brand">
-          Payments{pendingPayments > 0 ? ` (${pendingPayments})` : ""}
-        </Link>
+        <>
+          <Link href="/events/manage" className="hover:text-brand">
+            Manage events
+          </Link>
+          <Link href="/admin/payments" className="hover:text-brand">
+            Payments{pendingPayments > 0 ? ` (${pendingPayments})` : ""}
+          </Link>
+        </>
       ) : null}
       {isAdmin ? (
         <Link href="/admin/users" className="hover:text-brand">

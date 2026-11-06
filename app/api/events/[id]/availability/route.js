@@ -9,8 +9,6 @@ import { showingAvailability } from "@/lib/showingQueries";
 import { isMissingShowingSetup, showingSetupMessage } from "@/lib/showings";
 import { createClient } from "@/lib/supabase/server";
 
-export const dynamic = "force-dynamic";
-
 function json(body, status = 200) {
   return NextResponse.json(body, {
     status,
