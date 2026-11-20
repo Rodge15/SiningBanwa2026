@@ -6,6 +6,7 @@ import { buttonClass, fieldClass } from "@/components/formStyles";
 import { requireRole } from "@/lib/auth";
 import { ADMIN_ROLES, ROLES, roleLabel } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export const metadata = {
   title: "Users | Sining Banwa",
@@ -289,20 +290,27 @@ async function UserList({ searchParams }) {
                       <td className="whitespace-nowrap px-4 py-3 text-muted">
                         {formatJoined(profile.created_at)}
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        {isSelf ? (
-                          <span className="text-xs text-muted">—</span>
-                        ) : (
-                          <form id={formId} action={setProfileAccess}>
-                            <input type="hidden" name="id" value={profile.id} />
-                            <button
-                              type="submit"
-                              className="inline-flex items-center justify-center rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-dark"
-                            >
-                              Save
-                            </button>
-                          </form>
-                        )}
+                                            <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-2">
+                          {isSelf ? (
+                            <span className="text-xs text-muted">—</span>
+                          ) : (
+                            <>
+                              <form id={formId} action={setProfileAccess}>
+                                <input type="hidden" name="id" value={profile.id} />
+                                <SubmitButton base="inline-flex items-center justify-center rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-dark">
+                                  Save
+                                </SubmitButton>
+                              </form>
+                              <Link
+                                href={`/admin/users/${profile.id}`}
+                                className="inline-flex items-center justify-center rounded-lg border border-line px-3 py-1.5 text-sm font-medium hover:border-brand"
+                              >
+                                Edit
+                              </Link>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
