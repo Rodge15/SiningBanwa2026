@@ -1,9 +1,11 @@
+import { connection } from "next/server";
 import { requireRole } from "@/lib/auth";
 import { customerContactsToCsv } from "@/lib/csv";
 import { ADMIN_ROLES } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
+  await connection();
   await requireRole(ADMIN_ROLES);
 
   const supabase = await createClient();

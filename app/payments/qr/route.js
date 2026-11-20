@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextResponse, connection } from "next/server";
 import { getCurrentProfile } from "@/lib/auth";
 import { getPaymentSettings } from "@/lib/paymentQueries";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function GET(request) {
+  await connection();
   const dest = request.headers.get("sec-fetch-dest");
   const accept = request.headers.get("accept") || "";
 

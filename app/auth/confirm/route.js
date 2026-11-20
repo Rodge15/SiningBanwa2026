@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 function redirectTo(request, pathname, error) {
@@ -14,6 +14,7 @@ function redirectTo(request, pathname, error) {
 }
 
 export async function GET(request) {
+  await connection();
   const code = request.nextUrl.searchParams.get("code");
   const tokenHash = request.nextUrl.searchParams.get("token_hash");
   const type = request.nextUrl.searchParams.get("type");

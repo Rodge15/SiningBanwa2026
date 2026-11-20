@@ -2,9 +2,10 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getPublicSupabaseEnv } from "@/lib/supabase/env";
-import { validateFullName } from "@/lib/roles";
+import { validateFullName, validatePhone } from "@/lib/roles";
 
 function readText(formData, name) {
   return String(formData.get(name) || "").trim();
@@ -61,9 +62,14 @@ export async function signUp(formData) {
   const confirmPassword = String(formData.get("confirmPassword") || "");
 
   const name = validateFullName(fullName);
+  const phone = validatePhone(formData.get("phone"));
 
   if (!name.ok) {
     fail("/signup", name.message);
+  }
+
+  if (!phone.ok) {
+    fail("/signup", phone.message);
   }
 
   if (!isValidEmail(email)) {
@@ -80,7 +86,7 @@ export async function signUp(formData) {
 
   const supabase = await createClient();
   const origin = await siteUrl();
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -93,8 +99,18 @@ export async function signUp(formData) {
     fail("/signup", error.message);
   }
 
+  // Save the phone onto the profile row the signup trigger just created.
+  if (phone.value && data?.user?.id) {
+    try {
+      await createAdminClient().from("profiles").update({ phone: phone.value }).eq("id", data.user.id);
+    } catch {
+      // Phone is optional; never block signup if this fails.
+    }
+  }
+
+  // Send them to the login page after signing up.
   redirect(
-    `/signup?message=${encodeURIComponent("Check your email and open the confirmation link before you log in.")}`,
+    `/login?message=${encodeURIComponent("Account created. Check your email and open the confirmation link, then log in.")}`,
   );
 }
 

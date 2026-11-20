@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextResponse, connection } from "next/server";
 import { isMissingReservationSetup, reservationSetupMessage } from "@/lib/reservations";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
+  await connection();
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("release_expired_seat_holds");
 

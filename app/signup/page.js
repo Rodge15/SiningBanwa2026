@@ -3,7 +3,8 @@ import { Suspense } from "react";
 import { signUp } from "@/app/actions/auth";
 import { AuthCard } from "@/components/AuthCard";
 import { QueryMessage } from "@/components/QueryMessage";
-import { buttonClass, fieldClass } from "@/components/formStyles";
+import { fieldClass } from "@/components/formStyles";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export const metadata = {
   title: "Sign up | Sining Banwa",
@@ -31,6 +32,20 @@ export default function SignUpPage({ searchParams }) {
             minLength={2}
             maxLength={120}
             required
+            className={fieldClass}
+          />
+        </div>
+        <div>
+          <label htmlFor="phone" className="text-sm font-medium">
+            Phone number <span className="font-normal text-muted">(optional)</span>
+          </label>
+          <input
+            id="phone"
+            name="phone"
+            type="tel"
+            autoComplete="tel"
+            placeholder="09XX XXX XXXX"
+            maxLength={30}
             className={fieldClass}
           />
         </div>
@@ -68,9 +83,9 @@ export default function SignUpPage({ searchParams }) {
             className={fieldClass}
           />
         </div>
-        <button type="submit" className={`${buttonClass} w-full`}>
+        <SubmitButton className="w-full">
           Sign up
-        </button>
+        </SubmitButton>
       </form>
       <p className="mt-4 text-sm text-muted">
         Already confirmed?{" "}

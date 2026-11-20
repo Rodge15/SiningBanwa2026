@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, connection } from "next/server";
 import { summarizeAudience } from "@/lib/audienceRules";
 import { getCurrentProfile } from "@/lib/auth";
 import { isUuid } from "@/lib/eventRules";
@@ -17,6 +17,7 @@ function json(body, status = 200) {
 }
 
 export async function GET(request, { params }) {
+  await connection();
   const { id } = await params;
 
   if (!isUuid(id)) {
@@ -99,7 +100,7 @@ export async function GET(request, { params }) {
   const summary = selected || {
     remaining: summaries.reduce((total, showing) => total + Number(showing.remaining || 0), 0),
     full: allFull && !allMissing,
-    layoutMissing: allMissing || summaries.length === 0 && event.data.admission_type !== "general",
+    layoutMissing: allMissing || (summaries.length === 0 && event.data.admission_type !== "general"),
     label: summaries.length === 0
       ? "No showtimes yet"
       : allMissing

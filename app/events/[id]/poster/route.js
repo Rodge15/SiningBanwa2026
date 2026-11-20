@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, connection } from "next/server";
 import { getCurrentProfile } from "@/lib/auth";
 import { EVENT_MANAGER_ROLES } from "@/lib/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -6,6 +6,7 @@ import { getVisibleEvent } from "@/lib/events";
 import { isUuid } from "@/lib/eventRules";
 
 export async function GET(request, { params }) {
+  await connection();
   const { id } = await params;
 
   if (!isUuid(id)) {
