@@ -52,8 +52,19 @@ export async function AuthNav() {
           <Link href="/events/manage" className="hover:text-brand">
             Manage events
           </Link>
-          <Link href="/admin/payments" className="hover:text-brand">
-            Payments{pendingPayments > 0 ? ` (${pendingPayments})` : ""}
+          <Link href="/admin/payments" className="flex items-center gap-1.5 hover:text-brand">
+            Payments
+            {pendingPayments > 0 ? (
+              <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-xs font-semibold leading-none text-white">
+                {pendingPayments}
+              </span>
+            ) : null}
+          </Link>
+          <Link href="/admin/bookings" className="hover:text-brand">
+            Bookings
+          </Link>
+          <Link href="/admin/scan" className="hover:text-brand">
+            Scan
           </Link>
         </>
       ) : null}
@@ -67,6 +78,9 @@ export async function AuthNav() {
       </Link>
       <Link href="/account" className="hover:text-brand">
         Dashboard
+      </Link>
+      <Link href="/account/profile" className="hover:text-brand">
+        Settings
       </Link>
       <form action={signOut}>
         <button type="submit" className="hover:text-brand">

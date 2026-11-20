@@ -1,6 +1,6 @@
 import { Geist } from "next/font/google";
-import { SiteFooter } from "@/components/SiteFooter";
-import { SiteHeader } from "@/components/SiteHeader";
+import { Suspense } from "react";
+import { AppFrame } from "@/components/AppFrame";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,13 +13,19 @@ export const metadata = {
   description: "Web-based event management prototype for Sining Banwa.",
 };
 
+// Runs before paint so the saved theme is applied with no flash of the wrong one.
+const themeScript = `(function(){try{var t=localStorage.getItem('theme');var d=t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d){document.documentElement.classList.add('dark');}}catch(e){}})();`;
+
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${geistSans.variable} h-full antialiased`}>
+    <html lang="en" suppressHydrationWarning className={`${geistSans.variable} h-full antialiased`}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="flex min-h-full flex-col">
-        <SiteHeader />
-        <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">{children}</main>
-        <SiteFooter />
+        <Suspense fallback={<div className="flex-1" />}>
+          <AppFrame>{children}</AppFrame>
+        </Suspense>
       </body>
     </html>
   );

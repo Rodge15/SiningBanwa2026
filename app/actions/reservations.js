@@ -9,12 +9,17 @@ import { validateSeatIds, validateStaffBooking } from "@/lib/reservationRules";
 import { EVENT_MANAGER_ROLES, ROLES } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
 
+// Use & when the path already has a query string (e.g. ?showing=...), otherwise ?.
+// Without this, ?showing=X?error=Y makes the showing id invalid and the page
+// bounces back to the "choose a date and time" step.
 function fail(path, message) {
-  redirect(`${path}?error=${encodeURIComponent(message)}`);
+  const separator = path.includes("?") ? "&" : "?";
+  redirect(`${path}${separator}error=${encodeURIComponent(message)}`);
 }
 
 function succeed(path, message) {
-  redirect(`${path}?message=${encodeURIComponent(message)}`);
+  const separator = path.includes("?") ? "&" : "?";
+  redirect(`${path}${separator}message=${encodeURIComponent(message)}`);
 }
 
 function readableDbError(error) {

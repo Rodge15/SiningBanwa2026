@@ -9,6 +9,10 @@ function go(message, kind) {
   redirect(`/account/profile?${kind}=${encodeURIComponent(message)}`);
 }
 
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 // Every signed-in role can edit only their own name and phone.
 // Email and role are not accepted here, and the database grant blocks those columns.
 export async function updateProfile(formData) {
@@ -35,6 +39,49 @@ export async function updateProfile(formData) {
   }
 
   go("Your profile was saved.", "message");
+}
+
+// Changing the login email. The current password is checked first, then Supabase
+// sends a confirmation link to the new address; the change takes effect only
+// after the customer clicks it. A database trigger then syncs profiles.email.
+export async function changeEmail(formData) {
+  const { user } = await requireRole(ROLES);
+  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const currentPassword = String(formData.get("emailPassword") || "");
+
+  if (!isValidEmail(email)) {
+    go("Enter a valid email address.", "error");
+  }
+
+  if (!currentPassword) {
+    go("Enter your current password to change your email.", "error");
+  }
+
+  if (!user.email) {
+    go("This account has no email on file, so it cannot be changed here.", "error");
+  }
+
+  if (email === user.email.toLowerCase()) {
+    go("That is already your email address.", "error");
+  }
+
+  const supabase = await createClient();
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: currentPassword,
+  });
+
+  if (signInError) {
+    go("Current password is incorrect. Your email was not changed.", "error");
+  }
+
+  const { error } = await supabase.auth.updateUser({ email });
+
+  if (error) {
+    go(error.message || "The email could not be changed.", "error");
+  }
+
+  go("Almost done — open the confirmation link we sent to your new email to finish the change.", "message");
 }
 
 // The current password is checked first. A wrong password never reaches the update.

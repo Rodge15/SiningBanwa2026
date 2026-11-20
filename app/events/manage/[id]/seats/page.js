@@ -39,8 +39,11 @@ async function Designer({ params, searchParams }) {
   if (data.admission_type === "general") {
     return (
       <div className="space-y-3">
-        <Link href={`/events/manage/${data.id}`} className="text-sm text-brand hover:underline">
-          Back to event editor
+        <Link
+          href={`/events/manage/${data.id}`}
+          className="inline-flex w-fit items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-muted transition hover:border-brand hover:text-brand"
+        >
+          <span aria-hidden="true">&larr;</span> Back to event editor
         </Link>
         <h1 className="text-3xl font-semibold">No seat map</h1>
         <p className="text-sm text-muted">
@@ -64,8 +67,11 @@ async function Designer({ params, searchParams }) {
   return (
     <div className="space-y-4">
       <div>
-        <Link href={`/events/manage/${data.id}`} className="text-sm text-brand hover:underline">
-          Back to event editor
+        <Link
+          href={`/events/manage/${data.id}`}
+          className="inline-flex w-fit items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-muted transition hover:border-brand hover:text-brand"
+        >
+          <span aria-hidden="true">&larr;</span> Back to event editor
         </Link>
         <p className="mt-3 text-sm font-medium uppercase tracking-wide text-brand">Staff</p>
         <h1 className="mt-1 text-3xl font-semibold">Design seats</h1>
@@ -86,8 +92,11 @@ async function Designer({ params, searchParams }) {
 export default function SeatDesignerPage({ params, searchParams }) {
   return (
     <section className="space-y-4">
-      <Link href="/events/manage" className="text-sm text-brand hover:underline">
-        Back to managed events
+      <Link
+        href="/events/manage"
+        className="inline-flex w-fit items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-muted transition hover:border-brand hover:text-brand"
+      >
+        <span aria-hidden="true">&larr;</span> Back to managed events
       </Link>
       <Suspense fallback={<p className="text-sm text-muted">Loading seat designer...</p>}>
         <Designer params={params} searchParams={searchParams} />

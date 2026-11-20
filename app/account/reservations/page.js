@@ -4,8 +4,8 @@ import { QueryMessage } from "@/components/QueryMessage";
 import { requireRole } from "@/lib/auth";
 import { formatManilaDateTime } from "@/lib/eventRules";
 import { formatPeso } from "@/lib/seatRules";
+import { ReservationStatusBadge } from "@/components/ReservationStatusBadge";
 import { isMissingReservationSetup, listMyReservations, reservationSetupMessage } from "@/lib/reservations";
-import { reservationStatusLabel } from "@/lib/reservationRules";
 import { ROLES } from "@/lib/roles";
 
 export const metadata = {
@@ -39,10 +39,12 @@ async function ReservationList({ searchParams }) {
               href={`/account/reservations/${reservation.id}`}
               className="block rounded-2xl border border-line bg-card p-4 shadow-sm hover:border-brand"
             >
-              <span className="font-semibold">{reservation.eventTitle}</span>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-semibold">{reservation.eventTitle}</span>
+                <ReservationStatusBadge status={reservation.status} />
+              </div>
               <span className="mt-1 block text-sm text-muted">
-                {reservationStatusLabel(reservation.status)} · {formatPeso(reservation.totalAmount)} ·{" "}
-                {formatManilaDateTime(reservation.createdAt)}
+                {formatPeso(reservation.totalAmount)} · {formatManilaDateTime(reservation.createdAt)}
               </span>
             </Link>
           </li>

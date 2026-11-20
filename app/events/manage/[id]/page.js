@@ -127,8 +127,11 @@ async function EditEvent({ params, searchParams }) {
 export default function EditEventPage({ params, searchParams }) {
   return (
     <section className="space-y-4">
-      <Link href="/events/manage" className="text-sm text-brand hover:underline">
-        Back to managed events
+      <Link
+        href="/events/manage"
+        className="inline-flex w-fit items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-muted transition hover:border-brand hover:text-brand"
+      >
+        <span aria-hidden="true">&larr;</span> Back to managed events
       </Link>
       <Suspense fallback={<p className="text-sm text-muted">Loading event...</p>}>
         <EditEvent params={params} searchParams={searchParams} />

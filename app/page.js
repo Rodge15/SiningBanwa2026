@@ -1,12 +1,66 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { EventCard } from "@/components/EventCard";
 import { buttonClass } from "@/components/formStyles";
 import { attachAudience } from "@/lib/audience";
+import { getCurrentUser } from "@/lib/auth";
 import { eventLoadMessage, listPublishedEvents } from "@/lib/events";
 import { getPublicSupabaseEnv } from "@/lib/supabase/env";
 
+const outlineButtonClass =
+  "inline-flex items-center justify-center rounded-lg border border-line px-4 py-2 font-medium hover:border-brand";
+
+async function HeroActions() {
+  // Reads the session per request, so this part is dynamic.
+  await connection();
+
+  let user = null;
+
+  if (getPublicSupabaseEnv().configured) {
+    try {
+      user = await getCurrentUser();
+    } catch {
+      user = null;
+    }
+  }
+
+  if (user) {
+    return (
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <Link href="/events" className={buttonClass}>
+          Browse events
+        </Link>
+        <Link href="/account/reservations" className={outlineButtonClass}>
+          My reservations
+        </Link>
+        <Link href="/account" className={outlineButtonClass}>
+          Dashboard
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+      <Link href="/events" className={buttonClass}>
+        Browse events
+      </Link>
+      <Link href="/signup" className={outlineButtonClass}>
+        Create an account
+      </Link>
+      <Link href="/login" className={outlineButtonClass}>
+        Log in
+      </Link>
+    </div>
+  );
+}
+
 async function HomeEvents() {
+  // Published events are read live from Supabase per request, so this part is
+  // dynamic, not prerendered.
+  await connection();
+
   if (!getPublicSupabaseEnv().configured) {
     return (
       <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
@@ -17,17 +71,19 @@ async function HomeEvents() {
   }
 
   const listed = await listPublishedEvents();
-  const audience = listed.error ? { events: listed.data, error: listed.error } : await attachAudience(listed.data);
-  const data = audience.events;
-  const error = listed.error || audience.error;
 
-  if (error) {
+  if (listed.error) {
     return (
       <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
-        {eventLoadMessage(error)}
+        {eventLoadMessage(listed.error)}
       </p>
     );
   }
+
+  // Seat-count availability is a best-effort enrichment. If it fails, still show
+  // the events (without the count pills) instead of blanking the whole list.
+  const audience = await attachAudience(listed.data);
+  const data = audience.events || listed.data;
 
   if (!data?.length) {
     return (
@@ -38,7 +94,7 @@ async function HomeEvents() {
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-6 sm:grid-cols-2">
       {data.map((event) => (
         <EventCard key={event.id} event={event} href={`/events/${event.id}`} />
       ))}
@@ -55,26 +111,19 @@ export default function Home() {
           Sining Banwa event system
         </h1>
         <p className="mt-4 max-w-2xl leading-7 text-muted">
-          Browse published Sining Banwa events, or create an account to hold seats. Payments and tickets
-          come in later phases.
+          Browse published Sining Banwa events and hold seats for the shows you want.
         </p>
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          <Link href="/events" className={buttonClass}>
-            Browse events
-          </Link>
-          <Link
-            href="/signup"
-            className="inline-flex items-center justify-center rounded-lg border border-line px-4 py-2 font-medium hover:border-brand"
-          >
-            Create an account
-          </Link>
-          <Link
-            href="/login"
-            className="inline-flex items-center justify-center rounded-lg border border-line px-4 py-2 font-medium hover:border-brand"
-          >
-            Log in
-          </Link>
-        </div>
+        <Suspense
+          fallback={
+            <div className="mt-6">
+              <Link href="/events" className={buttonClass}>
+                Browse events
+              </Link>
+            </div>
+          }
+        >
+          <HeroActions />
+        </Suspense>
       </section>
       <section className="space-y-4">
         <div>

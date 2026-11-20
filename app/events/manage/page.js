@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { ManageEventsTable } from "@/components/ManageEventsTable";
 import { QueryMessage } from "@/components/QueryMessage";
 import { buttonClass } from "@/components/formStyles";
 import { requireRole } from "@/lib/auth";
 import { EVENT_MANAGER_ROLES, roleLabel } from "@/lib/roles";
 import { attachAudience } from "@/lib/audience";
 import { eventLoadMessage, listManagedEvents } from "@/lib/events";
-import { formatManilaDateTime, statusLabel } from "@/lib/eventRules";
 
 export const metadata = {
   title: "Manage events | Sining Banwa",
@@ -47,43 +47,7 @@ async function ManageEvents({ searchParams }) {
           No events yet. Create a draft, then publish it when it should be public.
         </p>
       ) : null}
-      {data?.length ? (
-        <div className="overflow-x-auto rounded-2xl border border-line bg-card">
-          <table className="w-full min-w-[40rem] text-left text-sm">
-            <thead className="border-b border-line text-muted">
-              <tr>
-                <th className="px-4 py-3 font-medium">Title</th>
-                <th className="px-4 py-3 font-medium">Start</th>
-                <th className="px-4 py-3 font-medium">Places left</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((event) => (
-                <tr key={event.id} className="border-b border-line last:border-0">
-                  <td className="px-4 py-3 font-medium">{event.title}</td>
-                  <td className="px-4 py-3">{formatManilaDateTime(event.starts_at)}</td>
-                  <td className="px-4 py-3">{event.availability?.label || "Not ready"}</td>
-                  <td className="px-4 py-3">{statusLabel(event.status)}</td>
-                  <td className="px-4 py-3">
-                    <Link href={`/events/manage/${event.id}`} className="text-brand hover:underline">
-                      Edit
-                    </Link>
-                    {event.admission_type === "general" ? (
-                      <span className="ml-3 text-muted">No seat map</span>
-                    ) : (
-                      <Link href={`/events/manage/${event.id}/seats`} className="ml-3 text-brand hover:underline">
-                        Seats
-                      </Link>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
+      {data?.length ? <ManageEventsTable events={data} /> : null}
     </section>
   );
 }

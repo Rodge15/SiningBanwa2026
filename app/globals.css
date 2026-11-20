@@ -1,13 +1,28 @@
 @import "tailwindcss";
 
+/* Palette taken from the Sining Banwa dragonfly logo:
+   teal #2fb3b0, green #8cc152, orange #e0953a, red #d94a4a, periwinkle #8a8fd8,
+   black ink on white. Teal is the primary brand. */
 :root {
-  --background: #f7f1e8;
-  --foreground: #1f1a17;
-  --brand: #7a2f2f;
-  --brand-dark: #5c2222;
-  --card: #fffdf9;
-  --muted: #6b5e57;
-  --line: #e4d8cc;
+  --background: #f4f6f5;
+  --foreground: #1b1e1e;
+  --brand: #0d9488;
+  --brand-dark: #0f766e;
+  --card: #ffffff;
+  --muted: #5c6766;
+  --line: #e2e7e5;
+}
+
+/* Dark theme. Toggled by adding the "dark" class to <html>. */
+.dark {
+  --background: #0f1413;
+  --foreground: #e8edec;
+  --brand: #19a79d;
+  --brand-dark: #0f847b;
+  --card: #18201f;
+  --muted: #94a09e;
+  --line: #28322f;
+  color-scheme: dark;
 }
 
 @theme inline {

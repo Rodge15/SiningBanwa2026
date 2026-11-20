@@ -14,6 +14,7 @@ import { paymentMethodLabel } from "@/lib/paymentRules";
 import { getMyReservation, isMissingReservationSetup, reservationSetupMessage } from "@/lib/reservations";
 import { reservationSourceLabel, reservationStatusLabel, totalsMatch } from "@/lib/reservationRules";
 import { ROLES } from "@/lib/roles";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export const metadata = {
   title: "Reservation | Sining Banwa",
@@ -112,9 +113,7 @@ async function ReservationDetails({ params, searchParams }) {
       {canCancel ? (
         <form action={cancelReservation}>
           <input type="hidden" name="reservationId" value={data.id} />
-          <button type="submit" className={buttonClass}>
-            Cancel hold
-          </button>
+          <SubmitButton pendingLabel="Cancelling…">Cancel hold</SubmitButton>
         </form>
       ) : null}
       <p>

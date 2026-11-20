@@ -1,20 +1,28 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import QRCode from "qrcode";
 import { requireRole } from "@/lib/auth";
+import { code128Png } from "@/lib/barcodePng";
+import { bookingReference } from "@/lib/bookingReference";
+import { sendMail } from "@/lib/email";
+import { sendSms } from "@/lib/sms";
 import { isUuid } from "@/lib/eventRules";
 import { validatePaymentMethod, validatePaymentReference, validateProofFile } from "@/lib/paymentRules";
 import { isMissingShowingSetup, showingSetupMessage } from "@/lib/showings";
 import { EVENT_MANAGER_ROLES } from "@/lib/roles";
+import { formatPeso } from "@/lib/seatRules";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 function fail(path, message) {
-  redirect(`${path}?error=${encodeURIComponent(message)}`);
+  const separator = path.includes("?") ? "&" : "?";
+  redirect(`${path}${separator}error=${encodeURIComponent(message)}`);
 }
 
 function succeed(path, message) {
-  redirect(`${path}?message=${encodeURIComponent(message)}`);
+  const separator = path.includes("?") ? "&" : "?";
+  redirect(`${path}${separator}message=${encodeURIComponent(message)}`);
 }
 
 function readable(error) {
@@ -104,7 +112,201 @@ export async function submitPaymentProof(formData) {
     fail(path, message);
   }
 
-  succeed(path, "Payment submitted. Your seats stay held while staff review it.");
+  // Email the admin (there is something to review) and the customer (we got it).
+  // Best-effort, so it never blocks the submission.
+  await notifyPaymentSubmitted(reservationId);
+
+  // Send the customer to their reservations list after submitting, so they see
+  // the booking move to "Confirmation in progress" among all their reservations.
+  succeed("/account/reservations", "Payment submitted. Your booking is now waiting for staff to verify it.");
+}
+
+// Builds the booking reference block for an email: the big reference number,
+// the Code 128 barcode, and the QR code. Barcode and QR are attached as PNGs
+// (cid) because email clients strip inline SVG and often block data-URI images.
+async function buildBookingCodes(reservation) {
+  const reference = bookingReference(reservation.id);
+  const site = process.env.NEXT_PUBLIC_SITE_URL || "";
+  const qrPayload = site ? `${site}/account/reservations/${reservation.id}` : reference;
+  const attachments = [];
+
+  const barcode = code128Png(reference, { height: 70, moduleWidth: 2, margin: 12 });
+  if (barcode) {
+    attachments.push({ filename: `${reference}.png`, content: barcode, cid: "barcode" });
+  }
+
+  let qr = null;
+  try {
+    qr = await QRCode.toBuffer(qrPayload, { margin: 1, width: 220 });
+  } catch {
+    qr = null;
+  }
+  if (qr) {
+    attachments.push({ filename: `${reference}-qr.png`, content: qr, cid: "qr" });
+  }
+
+  const html = `
+    <div style="margin:16px 0;padding:16px;border:1px solid #e4d8cc;border-radius:12px;text-align:center">
+      <div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#7a2f2f">Booking reference</div>
+      <div style="font-size:26px;font-weight:700;letter-spacing:.12em;margin:4px 0 12px;color:#1f1a17">${reference}</div>
+      ${barcode ? `<img src="cid:barcode" alt="${reference}" style="max-width:100%;height:auto"/>` : ""}
+      ${qr ? `<div style="margin-top:12px"><img src="cid:qr" alt="QR for ${reference}" width="150" height="150" style="border:1px solid #e4d8cc;border-radius:8px"/></div>` : ""}
+    </div>`;
+
+  return { reference, attachments, html };
+}
+
+// Best-effort notifications when a customer submits their payment:
+//  - the admin/staff gets an email that a new payment is waiting for review
+//  - the customer gets an email confirming the payment was received
+async function notifyPaymentSubmitted(reservationId) {
+  try {
+    const admin = createAdminClient();
+
+    const { data: reservation } = await admin
+      .from("reservations")
+      .select("id, customer_id, event_title, total_amount")
+      .eq("id", reservationId)
+      .maybeSingle();
+
+    if (!reservation) {
+      return;
+    }
+
+    const amount = formatPeso(reservation.total_amount);
+    const eventTitle = reservation.event_title || "an event";
+    const site = process.env.NEXT_PUBLIC_SITE_URL || "";
+    const codes = await buildBookingCodes(reservation);
+    const reference = codes.reference;
+
+    // 1) Notify the admin inbox (with the barcode so staff can match it).
+    const adminTo = process.env.ADMIN_NOTIFY_EMAIL || process.env.SMTP_USER || "";
+    if (adminTo) {
+      const reviewLink = site ? `${site}/admin/payments` : "";
+      await sendMail({
+        to: adminTo,
+        subject: `New payment to review — ${reference}`,
+        attachments: codes.attachments,
+        html: `
+          <div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:auto;color:#1f1a17">
+            <h2 style="color:#7a2f2f;margin:0 0 8px">New payment submitted</h2>
+            <p>A customer booked and submitted a payment. It is waiting for review.</p>
+            <p style="color:#6b5e57;margin:0"><strong>Event:</strong> ${eventTitle} &middot; <strong>Amount:</strong> ${amount}</p>
+            ${codes.html}
+            ${reviewLink ? `<p><a href="${reviewLink}" style="color:#7a2f2f">Open the payment review page</a></p>` : ""}
+          </div>
+        `,
+      });
+    }
+
+    // 2) Confirm to the customer that the payment was received.
+    if (reservation.customer_id) {
+      const { data: profile } = await admin
+        .from("profiles")
+        .select("email, full_name")
+        .eq("id", reservation.customer_id)
+        .maybeSingle();
+
+      if (profile?.email) {
+        const name = profile.full_name || "there";
+        const link = site ? `${site}/account/reservations/${reservation.id}` : "";
+        await sendMail({
+          to: profile.email,
+          subject: `We received your payment — ${reference}`,
+          attachments: codes.attachments,
+          html: `
+            <div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:auto;color:#1f1a17">
+              <h2 style="color:#7a2f2f;margin:0 0 8px">Payment received</h2>
+              <p>Hi ${name},</p>
+              <p>We received your payment for <strong>${eventTitle}</strong> (${amount}). Our staff will verify it shortly — you'll get another message once it's confirmed.</p>
+              ${codes.html}
+              <p>Keep this reference and barcode for verification.</p>
+              ${link ? `<p><a href="${link}" style="color:#7a2f2f">Track your booking</a></p>` : ""}
+              <p style="color:#6b5e57;font-size:13px">Sining Banwa</p>
+            </div>
+          `,
+        });
+      }
+    }
+  } catch {
+    // Notifications must never affect the submission outcome.
+  }
+}
+
+// Best-effort confirmation email after a payment is approved. It looks up the
+// customer and emails them their booking reference. Any failure is swallowed so
+// a mail problem can never block or undo the approval.
+async function notifyPaymentVerified(paymentId) {
+  try {
+    const admin = createAdminClient();
+
+    const { data: payment } = await admin
+      .from("payments")
+      .select("reservation_id")
+      .eq("id", paymentId)
+      .maybeSingle();
+
+    if (!payment?.reservation_id) {
+      return;
+    }
+
+    const { data: reservation } = await admin
+      .from("reservations")
+      .select("id, customer_id, event_title, total_amount")
+      .eq("id", payment.reservation_id)
+      .maybeSingle();
+
+    if (!reservation?.customer_id) {
+      return;
+    }
+
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("email, full_name, phone")
+      .eq("id", reservation.customer_id)
+      .maybeSingle();
+
+    if (!profile) {
+      return;
+    }
+
+    const name = profile.full_name || "there";
+    const eventTitle = reservation.event_title || "your event";
+    const site = process.env.NEXT_PUBLIC_SITE_URL || "";
+    const link = site ? `${site}/account/reservations/${reservation.id}` : "";
+    const codes = await buildBookingCodes(reservation);
+    const reference = codes.reference;
+
+    // Confirmation email.
+    if (profile.email) {
+      await sendMail({
+        to: profile.email,
+        subject: `Your Sining Banwa booking is confirmed — ${reference}`,
+        attachments: codes.attachments,
+        html: `
+          <div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:auto;color:#1f1a17">
+            <h2 style="color:#7a2f2f;margin:0 0 8px">Booking confirmed</h2>
+            <p>Hi ${name},</p>
+            <p>Your payment for <strong>${eventTitle}</strong> (${formatPeso(reservation.total_amount)}) has been verified. Your booking is now confirmed.</p>
+            ${codes.html}
+            <p>Show this at the entrance — staff can scan the QR or the barcode to pull up your booking.</p>
+            ${link ? `<p><a href="${link}" style="color:#7a2f2f">View your booking</a></p>` : ""}
+            <p style="color:#6b5e57;font-size:13px">See you at the show,<br>Sining Banwa</p>
+          </div>
+        `,
+      });
+    }
+
+    // Confirmation SMS via UniSMS.
+    if (profile.phone) {
+      await sendSms({
+        to: profile.phone,
+        text: `Sining Banwa: Your booking ${reference} for "${eventTitle}" is CONFIRMED. Show this reference at the entrance. Salamat!`,
+      });
+    }
+  } catch {
+    // A notification failure must never affect the review outcome.
+  }
 }
 
 export async function reviewPayment(formData) {
@@ -126,6 +328,10 @@ export async function reviewPayment(formData) {
 
   if (error) {
     fail(path, readable(error));
+  }
+
+  if (decision === "verified") {
+    await notifyPaymentVerified(paymentId);
   }
 
   succeed(path, decision === "verified" ? "Payment confirmed." : "Payment rejected. The customer can resubmit.");

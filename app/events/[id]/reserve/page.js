@@ -13,12 +13,16 @@ import { getEventLayout, isMissingSeatTable, seatSetupMessage } from "@/lib/seat
 import { showingAvailability } from "@/lib/showingQueries";
 import { isMissingShowingSetup, showingSetupMessage } from "@/lib/showings";
 import { getPublicSupabaseEnv } from "@/lib/supabase/env";
+import { connection } from "next/server";
 
 export const metadata = {
   title: "Reserve seats | Sining Banwa",
 };
 
 async function ReserveDetails({ params, searchParams }) {
+  // Reads live seat availability and the signed-in profile per request.
+  await connection();
+
   const { id } = await params;
 
   if (!getPublicSupabaseEnv().configured) {
@@ -105,8 +109,11 @@ async function ReserveDetails({ params, searchParams }) {
 export default function ReservePage({ params, searchParams }) {
   return (
     <section className="space-y-4">
-      <Link href="/events" className="text-sm text-brand hover:underline">
-        Back to events
+      <Link
+        href="/events"
+        className="inline-flex w-fit items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-muted transition hover:border-brand hover:text-brand"
+      >
+        <span aria-hidden="true">&larr;</span> Back to events
       </Link>
       <Suspense fallback={<p className="text-sm text-muted">Loading seats...</p>}>
         <ReserveDetails params={params} searchParams={searchParams} />

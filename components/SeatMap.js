@@ -1,13 +1,25 @@
 "use client";
 
-import { effectivePrice, effectiveTier, formatPeso, POSITION_MAX, seatStatusMeta, SEAT_STATUS_META, SEAT_TIER_META } from "@/lib/seatRules";
+import { effectivePrice, effectiveTier, formatPeso, POSITION_MAX, seatStatusMeta, SEAT_STATUS_META, SEAT_TIER_META, summarizeTiers } from "@/lib/seatRules";
 
 const BOX_WIDTH = 84;
 const BOX_HEIGHT = 58;
 const GAP = 8;
 const ROW_LABEL_WIDTH = 36;
 
-export function SeatLegend() {
+function tierPriceText(summary) {
+  if (!summary || summary.count === 0 || summary.min === null) {
+    return "";
+  }
+
+  return summary.min === summary.max
+    ? ` · ${formatPeso(summary.min)}`
+    : ` · ${formatPeso(summary.min)}–${formatPeso(summary.max)}`;
+}
+
+export function SeatLegend({ sections }) {
+  const summaries = sections ? new Map(summarizeTiers(sections).map((item) => [item.tier, item])) : null;
+
   return (
     <div className="space-y-2">
       <ul className="flex flex-wrap gap-3 text-xs text-muted">
@@ -15,6 +27,7 @@ export function SeatLegend() {
           <li key={tier} className="flex items-center gap-2">
             <span className="inline-block h-3 w-3 rounded-sm border border-black/10" style={{ backgroundColor: meta.color }} />
             {meta.label}
+            {summaries ? <span className="text-foreground/70">{tierPriceText(summaries.get(tier))}</span> : null}
           </li>
         ))}
       </ul>
@@ -34,7 +47,7 @@ function clampPosition(value) {
   return Math.max(0, Math.min(POSITION_MAX, Math.round(value)));
 }
 
-function canvasSize(sections) {
+function canvasSize(sections, minSize) {
   let width = 720;
   let height = 420;
 
@@ -53,6 +66,13 @@ function canvasSize(sections) {
     }
   }
 
+  // A reference image enlarges the canvas to a full plan so seats can be traced
+  // across the whole picture, even before many seats exist.
+  if (minSize) {
+    width = Math.max(width, Number(minSize.width) || 0);
+    height = Math.max(height, Number(minSize.height) || 0);
+  }
+
   return { width: Math.min(width + 48, 4040), height: Math.min(height + 48, 4040) };
 }
 
@@ -66,16 +86,19 @@ export function SeatMap({
   draggable = false,
   layout = "auto",
   selectAvailableOnly = false,
+  backgroundUrl = null,
+  backgroundOpacity = 0.4,
+  backgroundSize = null,
 }) {
   const selectedIds = new Set(selectedSeatIds);
   const useCanvas = layout === "canvas" || (layout !== "grid" && (sections || []).some((section) => Number.isInteger(Number(section.posX))));
 
-  if (!sections?.length) {
+  if (!sections?.length && !backgroundUrl) {
     return <p className="text-sm text-muted">No seating sections yet.</p>;
   }
 
-  if (useCanvas) {
-    const size = canvasSize(sections);
+  if (useCanvas || backgroundUrl) {
+    const size = canvasSize(sections, backgroundSize);
 
     function beginDrag(event, payload) {
       if (!draggable) {
@@ -113,9 +136,24 @@ export function SeatMap({
 
     return (
       <div className="space-y-3">
-        <SeatLegend />
+        <SeatLegend sections={sections} />
         <div className="overflow-auto rounded-xl border border-line bg-white p-3">
-          <svg role="group" aria-label="Seating layout" width={size.width} height={size.height} viewBox={`0 0 ${size.width} ${size.height}`} className="max-w-none">
+          <div className="mx-auto mb-3 w-full max-w-md rounded-lg bg-amber-100 py-2 text-center text-xs font-semibold uppercase tracking-[0.3em] text-amber-900">
+            Stage
+          </div>
+          <div className="relative" style={{ width: size.width, height: size.height }}>
+            {backgroundUrl ? (
+              // Tracing guide only. pointer-events-none keeps seat dragging working on top.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={backgroundUrl}
+                alt=""
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 h-full w-full object-contain"
+                style={{ opacity: backgroundOpacity }}
+              />
+            ) : null}
+            <svg role="group" aria-label="Seating layout" width={size.width} height={size.height} viewBox={`0 0 ${size.width} ${size.height}`} className="relative max-w-none">
             {sections.map((section) => (
               <g key={section.id}>
                 <g
@@ -153,13 +191,19 @@ export function SeatMap({
                         const shownPrice = Number.isFinite(price) ? price : effectivePrice(seat, section, row);
                         const x = Number(seat.posX) || 0;
                         const y = Number(seat.posY) || 0;
+                        const taken = seat.status === "reserved" || seat.status === "sold" || seat.status === "locked";
+                        // Selected = light grey, already booked = darker grey, blocked = pale grey,
+                        // otherwise the tier color. Booked seats show a "Booked" label.
+                        const fillColor = selected ? "#9ca3af" : taken ? "#4b5563" : seat.status === "blocked" ? "#cbd5e1" : tier.color;
+                        const textColor = selected || seat.status === "blocked" ? "#1f2937" : "#ffffff";
+                        const strokeColor = selected ? "#111827" : taken ? "#374151" : seat.status === "available" ? "#d7cdc6" : meta.color;
 
                         return (
                           <g
                             key={seat.id}
                             role={canClick || draggable ? "button" : "img"}
                             tabIndex={canClick || draggable ? 0 : undefined}
-                            aria-label={`Seat ${seat.label}, ${tier.label}, ${formatPeso(shownPrice)}, ${meta.label}`}
+                            aria-label={`Seat ${seat.label}, ${tier.label}, ${formatPeso(shownPrice)}, ${selected ? "selected" : meta.label}`}
                             aria-pressed={canClick ? selected : undefined}
                             onPointerDown={draggable ? (event) => beginDrag(event, { kind: "seat", id: seat.id, sectionId: section.id, rowId: row.id }) : undefined}
                             onClick={canClick ? () => onBoxClick?.({ sectionId: section.id, rowId: row.id, colIndex: seat.colIndex, seat, kind: "seat" }) : undefined}
@@ -173,6 +217,7 @@ export function SeatMap({
                                   }
                                 : undefined
                             }
+                            style={canClick ? { cursor: "pointer" } : undefined}
                           >
                             <rect
                               x={x}
@@ -180,16 +225,15 @@ export function SeatMap({
                               width="84"
                               height="44"
                               rx="6"
-                              fill={tier.color}
-                              fillOpacity={seat.status === "blocked" ? 0.45 : 1}
-                              stroke={selected ? "#1f1a17" : meta.color}
+                              fill={fillColor}
+                              stroke={strokeColor}
                               strokeWidth={selected ? 3 : 2}
                             />
-                            <text x={x + 8} y={y + 18} fill="#ffffff" fontSize="11">
+                            <text x={x + 8} y={y + 18} fill={textColor} fontSize="11">
                               {seat.label}
                             </text>
-                            <text x={x + 8} y={y + 34} fill="#ffffff" fontSize="10">
-                              {formatPeso(shownPrice)}
+                            <text x={x + 8} y={y + 34} fill={textColor} fontSize="10">
+                              {taken ? "Booked" : formatPeso(shownPrice)}
                             </text>
                           </g>
                         );
@@ -200,6 +244,7 @@ export function SeatMap({
               </g>
             ))}
           </svg>
+          </div>
         </div>
       </div>
     );
@@ -283,7 +328,7 @@ export function SeatMap({
                               rx="8"
                               fill={tier?.color || "#fffdf9"}
                               fillOpacity={seat?.status === "blocked" ? 0.45 : 1}
-                              stroke={selected ? "#1f1a17" : meta?.color || "#d7cdc6"}
+                              stroke={selected ? "#1f1a17" : seat?.status === "available" ? "#d7cdc6" : meta?.color || "#d7cdc6"}
                               strokeWidth={selected ? 3 : 2}
                               strokeDasharray={seat ? undefined : "4 3"}
                             />
@@ -321,7 +366,7 @@ export function SeatMap({
           </figure>
         );
       })}
-      <SeatLegend />
+      <SeatLegend sections={sections} />
     </div>
   );
 }

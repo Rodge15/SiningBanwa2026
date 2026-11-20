@@ -4,6 +4,7 @@ import { signIn } from "@/app/actions/auth";
 import { AuthCard } from "@/components/AuthCard";
 import { QueryMessage } from "@/components/QueryMessage";
 import { buttonClass, fieldClass } from "@/components/formStyles";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export const metadata = {
   title: "Log in | Sining Banwa",
@@ -37,9 +38,9 @@ async function LoginForm({ searchParams }) {
             className={fieldClass}
           />
         </div>
-        <button type="submit" className={`${buttonClass} w-full`}>
-          Log in
-        </button>
+       <SubmitButton className="w-full">
+  Log in
+</SubmitButton>
       </form>
       <p className="mt-4 text-sm text-muted">
         <Link href="/forgot-password" className="text-brand hover:underline">

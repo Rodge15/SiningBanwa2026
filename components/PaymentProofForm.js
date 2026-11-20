@@ -1,5 +1,6 @@
 import { buttonClass, fieldClass } from "@/components/formStyles";
 import { submitPaymentProof } from "@/app/actions/payments";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export function PaymentProofForm({ reservationId, amountLabel, resubmit = false }) {
   return (
@@ -24,9 +25,9 @@ export function PaymentProofForm({ reservationId, amountLabel, resubmit = false 
         Screenshot (JPG, PNG, or WebP, up to 5 MiB)
         <input id="proof" name="proof" type="file" accept="image/jpeg,image/png,image/webp" required className={fieldClass} />
       </label>
-      <button type="submit" className={buttonClass}>
-        {resubmit ? "Resubmit payment" : "I've paid"}
-      </button>
+      <SubmitButton pendingLabel="Submitting…">
+  {resubmit ? "Resubmit payment" : "I've paid"}
+</SubmitButton>
     </form>
   );
 }

@@ -10,12 +10,16 @@ import { formatManilaDateTime, isUuid } from "@/lib/eventRules";
 import { formatPeso } from "@/lib/seatRules";
 import { getEventLayout, isMissingSeatTable } from "@/lib/seats";
 import { getPublicSupabaseEnv } from "@/lib/supabase/env";
+import { connection } from "next/server";
 
 export const metadata = {
   title: "Event | Sining Banwa",
 };
 
 async function EventDetails({ params }) {
+  // This page reads live seat availability per request, so it is dynamic.
+  await connection();
+
   const { id } = await params;
 
   if (!getPublicSupabaseEnv().configured) {
@@ -80,8 +84,9 @@ async function EventDetails({ params }) {
           {data.admission_type === "general" ? (
             <p className="text-sm text-muted">This show does not use a seat map. Ticket price: {formatPeso(data.ticket_price)}.</p>
           ) : (
-            <p className="text-sm text-muted">Seat colors show the tier. The outline shows whether a seat is free, held, or paid.</p>
+            <p className="text-sm text-muted">Colored seats show the price tier. Grey seats are already booked.</p>
           )}
+          <ShowingPicker eventId={data.id} showings={availability?.showings || []} basePath={`/events/${data.id}/reserve`} />
           {seatError ? <p className="text-sm text-red-900">The seating layout could not be loaded.</p> : null}
           {data.admission_type !== "general" && !layout.error && layout.data.sections.length === 0 ? (
             <p className="text-sm text-muted">No seating layout has been saved for this event yet.</p>
@@ -89,7 +94,6 @@ async function EventDetails({ params }) {
           {data.admission_type !== "general" && !layout.error && layout.data.sections.length > 0 ? (
             <LiveSeatMap eventId={data.id} initialSections={layout.data.sections} />
           ) : null}
-          <ShowingPicker eventId={data.id} showings={availability?.showings || []} basePath={`/events/${data.id}/reserve`} />
           <LiveAvailability
             eventId={data.id}
             initial={availability}
@@ -105,8 +109,11 @@ async function EventDetails({ params }) {
 export default function EventDetailPage({ params }) {
   return (
     <section className="space-y-4">
-      <Link href="/events" className="text-sm text-brand hover:underline">
-        Back to events
+      <Link
+        href="/events"
+        className="inline-flex w-fit items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-muted transition hover:border-brand hover:text-brand"
+      >
+        <span aria-hidden="true">&larr;</span> Back to events
       </Link>
       <Suspense fallback={<p className="text-sm text-muted">Loading event...</p>}>
         <EventDetails params={params} />

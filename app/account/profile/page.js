@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { changePassword, updateProfile } from "@/app/actions/profile";
+import { changeEmail, changePassword, updateProfile } from "@/app/actions/profile";
 import { QueryMessage } from "@/components/QueryMessage";
 import { buttonClass, fieldClass } from "@/components/formStyles";
 import { requireRole } from "@/lib/auth";
@@ -18,32 +18,25 @@ async function ProfileForm({ searchParams }) {
       <section className="rounded-2xl border border-line bg-card p-6 shadow-sm">
         <h1 className="text-2xl font-semibold">Your profile</h1>
         <p className="mt-2 text-sm text-muted">
-          Email and role stay read-only so you cannot change your own access level.
+          Update your name, phone, email, and password. Your role is{" "}
+          <span className="font-medium">{roleLabel(profile.role)}</span> and can only be changed by an
+          administrator.
         </p>
         <Suspense fallback={null}>
           <div className="mt-4">
             <QueryMessage searchParams={searchParams} />
           </div>
         </Suspense>
-        <dl className="mt-6 space-y-3 text-sm">
-          <div>
-            <dt className="text-muted">Email</dt>
-            <dd className="font-medium">{profile.email || user.email}</dd>
-          </div>
-          <div>
-            <dt className="text-muted">Role</dt>
-            <dd className="font-medium">{roleLabel(profile.role)}</dd>
-          </div>
-        </dl>
         <form action={updateProfile} className="mt-6 space-y-3">
           <div>
             <label htmlFor="fullName" className="text-sm font-medium">
-              Full name
+              Complete name
             </label>
             <input
               id="fullName"
               name="fullName"
               type="text"
+              autoComplete="name"
               defaultValue={profile.full_name || ""}
               minLength={2}
               maxLength={120}
@@ -53,13 +46,14 @@ async function ProfileForm({ searchParams }) {
           </div>
           <div>
             <label htmlFor="phone" className="text-sm font-medium">
-              Phone <span className="font-normal text-muted">(optional)</span>
+              Phone number <span className="font-normal text-muted">(optional)</span>
             </label>
             <input
               id="phone"
               name="phone"
               type="tel"
               autoComplete="tel"
+              placeholder="09XX XXX XXXX"
               defaultValue={profile.phone || ""}
               maxLength={30}
               className={fieldClass}
@@ -67,6 +61,47 @@ async function ProfileForm({ searchParams }) {
           </div>
           <button type="submit" className={buttonClass}>
             Save profile
+          </button>
+        </form>
+      </section>
+
+      <section className="rounded-2xl border border-line bg-card p-6 shadow-sm">
+        <h2 className="text-xl font-semibold">Email address</h2>
+        <p className="mt-2 text-sm text-muted">
+          Your current email is <span className="font-medium">{profile.email || user.email}</span>.
+          Changing it sends a confirmation link to the new address — the change takes effect once you
+          open that link.
+        </p>
+        <form action={changeEmail} className="mt-4 space-y-3">
+          <div>
+            <label htmlFor="email" className="text-sm font-medium">
+              New email
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              defaultValue={profile.email || user.email || ""}
+              required
+              className={fieldClass}
+            />
+          </div>
+          <div>
+            <label htmlFor="emailPassword" className="text-sm font-medium">
+              Current password
+            </label>
+            <input
+              id="emailPassword"
+              name="emailPassword"
+              type="password"
+              autoComplete="current-password"
+              required
+              className={fieldClass}
+            />
+          </div>
+          <button type="submit" className={buttonClass}>
+            Update email
           </button>
         </form>
       </section>

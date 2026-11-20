@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { EventCard } from "@/components/EventCard";
 import { QueryMessage } from "@/components/QueryMessage";
@@ -11,6 +12,11 @@ export const metadata = {
 };
 
 async function PublishedEvents({ searchParams }) {
+  // These events are read live from Supabase per request, so opt this part
+  // out of prerendering. Without it Next.js 16 (cacheComponents) errors on the
+  // request-time values used while loading events.
+  await connection();
+
   if (!getPublicSupabaseEnv().configured) {
     return (
       <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
@@ -21,9 +27,11 @@ async function PublishedEvents({ searchParams }) {
   }
 
   const listed = await listPublishedEvents();
-  const audience = listed.error ? { events: listed.data, error: listed.error } : await attachAudience(listed.data);
-  const data = audience.events;
-  const error = listed.error || audience.error;
+  const error = listed.error;
+  // Seat-count availability is a best-effort enrichment. If it fails, still show
+  // the events (without the count pills) instead of blanking the whole list.
+  const audience = error ? { events: listed.data } : await attachAudience(listed.data);
+  const data = audience.events || listed.data;
 
   return (
     <>
@@ -40,7 +48,7 @@ async function PublishedEvents({ searchParams }) {
           No published events yet. Draft, completed, and cancelled events stay hidden here.
         </p>
       ) : null}
-      <div className="grid gap-4">
+      <div className="grid gap-6 sm:grid-cols-2">
         {data?.map((event) => (
           <EventCard key={event.id} event={event} href={`/events/${event.id}`} />
         ))}

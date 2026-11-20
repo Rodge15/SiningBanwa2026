@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert } from "@/components/Alert";
 import { SeatMap } from "@/components/SeatMap";
 import { buttonClass, fieldClass } from "@/components/formStyles";
@@ -14,6 +14,7 @@ import {
   POSITION_MAX,
   seatLabelsInLayout,
   seatStatusMeta,
+  summarizeTiers,
   uniqueSeatLabel,
   validateLayout,
   validateNewSection,
@@ -122,10 +123,102 @@ export function SeatDesigner({ eventId, initialLayout, action }) {
   const [selected, setSelected] = useState(null);
   const [preview, setPreview] = useState(false);
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState({ name: "Orchestra", price: "500", columns: "8", rows: "3" });
+  const [backgroundUrl, setBackgroundUrl] = useState(null);
+  const [backgroundOpacity, setBackgroundOpacity] = useState(0.4);
+  const [backgroundSize, setBackgroundSize] = useState(null);
+  const [collapsed, setCollapsed] = useState({});
+  const backgroundInputRef = useRef(null);
+  const backgroundKey = `sb-seat-bg-${eventId}`;
   const dragBase = useRef(null);
+
+  // The reference image is a tracing guide for staff only. It lives in this
+  // browser (localStorage), is not saved to the event, and is never shown to
+  // customers. Load any previously uploaded guide for this event.
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(backgroundKey);
+      if (saved) {
+        // One-time load after mount; reading localStorage on the server would
+        // break SSR, so this must run in an effect rather than during render.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setBackgroundUrl(saved);
+      }
+    } catch {
+      // Storage may be unavailable (private mode); the guide just won't persist.
+    }
+  }, [backgroundKey]);
+
+  // Measure the reference image so the canvas can grow to a full plan size,
+  // scaled to the picture's own shape.
+  useEffect(() => {
+    if (!backgroundUrl) {
+      return;
+    }
+    const image = new window.Image();
+    image.onload = () => {
+      const maxW = 1200;
+      const maxH = 3600;
+      let scale = Math.min(maxW / image.naturalWidth, maxH / image.naturalHeight);
+      if (image.naturalWidth * scale < 900) {
+        scale = Math.min(900 / image.naturalWidth, maxH / image.naturalHeight);
+      }
+      setBackgroundSize({
+        width: Math.round(image.naturalWidth * scale),
+        height: Math.round(image.naturalHeight * scale),
+      });
+    };
+    image.src = backgroundUrl;
+  }, [backgroundUrl]);
+
+  function toggleCollapsed(sectionId) {
+    setCollapsed((current) => ({ ...current, [sectionId]: !current[sectionId] }));
+  }
+
+  function onUploadBackground(event) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      setError("Upload an image file (JPG, PNG, or WebP) for the reference.");
+      return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      setError("The reference image must be under 3 MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || "");
+      setBackgroundUrl(dataUrl);
+      setError("");
+      try {
+        window.localStorage.setItem(backgroundKey, dataUrl);
+      } catch {
+        setError("The image is shown, but it was too large to keep after a page refresh.");
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeBackground() {
+    setBackgroundUrl(null);
+    setBackgroundSize(null);
+    if (backgroundInputRef.current) {
+      backgroundInputRef.current.value = "";
+    }
+    try {
+      window.localStorage.removeItem(backgroundKey);
+    } catch {
+      // ignore
+    }
+  }
   const parsed = validateLayout({ sections });
   const layoutJson = JSON.stringify(parsed.ok ? parsed.value : { sections });
+  const tierTotals = summarizeTiers(sections);
+  const seatTotal = tierTotals.reduce((total, tier) => total + tier.count, 0);
   const currentSection = sections.find((section) => section.id === selected?.sectionId) || null;
   const currentRow = currentSection?.rows.find((row) => row.id === selected?.rowId) || null;
   const currentSeat = currentRow?.seats.find((seat) => seat.id === selected?.seatId) || null;
@@ -345,6 +438,34 @@ export function SeatDesigner({ eventId, initialLayout, action }) {
         </div>
       </form>
       {error ? <Alert>{error}</Alert> : null}
+      <div className="space-y-2 rounded-2xl border border-line bg-card p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold">Tier mapping</h2>
+          <span className="text-xs text-muted">{seatTotal} seat{seatTotal === 1 ? "" : "s"} total</span>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {tierTotals.map((tier) => (
+            <div key={tier.tier} className="rounded-xl border border-line p-3">
+              <div className="flex items-center gap-2">
+                <span className="inline-block h-3 w-3 rounded-sm border border-black/10" style={{ backgroundColor: tier.color }} />
+                <span className="text-sm font-medium">{tier.label}</span>
+              </div>
+              <p className="mt-1 text-lg font-semibold">{tier.count} seat{tier.count === 1 ? "" : "s"}</p>
+              <p className="text-xs text-muted">
+                {tier.count === 0 || tier.min === null
+                  ? "No seats mapped"
+                  : tier.min === tier.max
+                    ? formatPeso(tier.min)
+                    : `${formatPeso(tier.min)} – ${formatPeso(tier.max)}`}
+              </p>
+            </div>
+          ))}
+        </div>
+        <p className="text-xs text-muted">
+          Set a whole block from each section&apos;s <span className="font-medium">Section tier</span>, or fine-tune a single
+          row with its own tier. Colors on the map follow the tier.
+        </p>
+      </div>
       <button type="button" className={buttonClass} onClick={() => setPreview((value) => !value)}>
         {preview ? "Back to editing" : "Preview layout"}
       </button>
@@ -356,39 +477,97 @@ export function SeatDesigner({ eventId, initialLayout, action }) {
         </div>
       ) : (
         <div className="space-y-6">
-          <SeatMap sections={sections} layout="canvas" draggable interactive selectedKey={currentSeat?.id || ""} onDrag={onDrag} onBoxClick={onBoxClick} />
+          <div className="space-y-3 rounded-2xl border border-line bg-card p-4">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-semibold">Reference image (tracing guide)</h2>
+                <p className="text-xs text-muted">
+                  Upload your seat plan, then add sections and drag the seats on top to match it. This guide
+                  stays in your browser only &mdash; it is not saved to the event and customers never see it.
+                </p>
+              </div>
+              {backgroundUrl ? (
+                <button
+                  type="button"
+                  onClick={removeBackground}
+                  className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-50"
+                >
+                  Remove image
+                </button>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap items-center gap-4">
+              <input
+                ref={backgroundInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={onUploadBackground}
+                className="text-sm"
+              />
+              {backgroundUrl ? (
+                <label className="flex items-center gap-2 text-xs text-muted">
+                  Opacity
+                  <input
+                    type="range"
+                    min={10}
+                    max={90}
+                    value={Math.round(backgroundOpacity * 100)}
+                    onChange={(event) => setBackgroundOpacity(Number(event.target.value) / 100)}
+                  />
+                </label>
+              ) : null}
+            </div>
+          </div>
+          <SeatMap sections={sections} layout="canvas" draggable interactive selectedKey={currentSeat?.id || ""} onDrag={onDrag} onBoxClick={onBoxClick} backgroundUrl={backgroundUrl} backgroundOpacity={backgroundOpacity} backgroundSize={backgroundSize} />
           <p className="text-sm text-muted">Drag a section title, row label, or seat. Booked or sold seats stay where they were saved.</p>
-          {sections.map((section) => (
+          {sections.map((section) => {
+            const isCollapsed = Boolean(collapsed[section.id]);
+            const seatsInSection = section.rows.reduce((total, row) => total + row.seats.length, 0);
+            return (
             <section key={section.id} className="space-y-4 rounded-2xl border border-line bg-card p-4">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold">{section.name || "Untitled section"}</h3>
+                <button
+                  type="button"
+                  onClick={() => toggleCollapsed(section.id)}
+                  className="rounded-lg border border-line px-3 py-1 text-xs font-medium text-muted transition hover:border-brand hover:text-brand"
+                >
+                  {isCollapsed ? "Expand" : "Minimize"}
+                </button>
+              </div>
+              {isCollapsed ? (
+                <p className="text-xs text-muted">
+                  {section.rows.length} row{section.rows.length === 1 ? "" : "s"} · {seatsInSection} seat
+                  {seatsInSection === 1 ? "" : "s"} · minimized
+                </p>
+              ) : (
+                <>
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <label className="text-sm font-medium" htmlFor={`name-${section.id}`}>Section name</label>
                   <input id={`name-${section.id}`} value={section.name} onChange={(event) => updateSection(section.id, (item) => ({ ...item, name: event.target.value }))} className={fieldClass} />
                 </div>
                 <div>
                   <label className="text-sm font-medium" htmlFor={`tier-${section.id}`}>Section tier</label>
-                  <select id={`tier-${section.id}`} value={section.tier || "regular"} onChange={(event) => updateSection(section.id, (item) => ({ ...item, tier: event.target.value }))} className={fieldClass}>
+                  <select
+                    id={`tier-${section.id}`}
+                    value={section.tier || "regular"}
+                    onChange={(event) => {
+                      const tier = event.target.value;
+                      // Setting the section tier maps every unlocked row to it, so
+                      // the whole block takes the Regular / Semi-VIP / VIP color.
+                      updateSection(section.id, (item) => ({
+                        ...item,
+                        tier,
+                        rows: item.rows.map((row) =>
+                          row.seats.some((seat) => lockedIds.has(seat.id)) ? row : { ...row, tier },
+                        ),
+                      }));
+                    }}
+                    className={fieldClass}
+                  >
                     {Object.entries(SEAT_TIER_META).map(([tier, meta]) => <option key={tier} value={tier}>{meta.label}</option>)}
                   </select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium" htmlFor={`price-${section.id}`}>Section price (PHP)</label>
-                  <input id={`price-${section.id}`} inputMode="decimal" value={section.defaultPrice} onChange={(event) => updateSection(section.id, (item) => ({ ...item, defaultPrice: event.target.value }))} className={fieldClass} />
-                </div>
-                <div>
-                  <label className="text-sm font-medium" htmlFor={`columns-${section.id}`}>Columns</label>
-                  <input id={`columns-${section.id}`} inputMode="numeric" value={section.columnCount} onChange={(event) => {
-                    const columnCount = Number(event.target.value);
-                    if (!Number.isInteger(columnCount) || columnCount < 1 || columnCount > 40) {
-                      return;
-                    }
-                    const highest = Math.max(0, ...section.rows.flatMap((row) => row.seats.map((seat) => seat.colIndex + 1)));
-                    if (columnCount < highest) {
-                      setError("Remove seats past that column before lowering the column count.");
-                      return;
-                    }
-                    updateSection(section.id, (item) => ({ ...item, columnCount }));
-                  }} className={fieldClass} />
                 </div>
               </div>
               {section.rows.map((row) => {
@@ -399,7 +578,7 @@ export function SeatDesigner({ eventId, initialLayout, action }) {
                     <select aria-label={`Tier for row ${row.label}`} value={row.tier || "regular"} disabled={protectedRow} onChange={(event) => updateSection(section.id, (item) => ({ ...item, rows: item.rows.map((entry) => entry.id === row.id ? { ...entry, tier: event.target.value } : entry) }))} className="rounded-lg border border-line px-2 py-1 text-sm">
                       {Object.entries(SEAT_TIER_META).map(([tier, meta]) => <option key={tier} value={tier}>{meta.label}</option>)}
                     </select>
-                    <input aria-label={`Price for row ${row.label}`} inputMode="decimal" value={row.price ?? ""} disabled={protectedRow} onChange={(event) => updateSection(section.id, (item) => ({ ...item, rows: item.rows.map((entry) => entry.id === row.id ? { ...entry, price: event.target.value } : entry) }))} className="w-24 rounded-lg border border-line px-2 py-1 text-sm" />
+                    <input aria-label={`Price for row ${row.label}`} inputMode="decimal" placeholder={`${section.defaultPrice}`} value={row.price ?? ""} disabled={protectedRow} onChange={(event) => updateSection(section.id, (item) => ({ ...item, rows: item.rows.map((entry) => entry.id === row.id ? { ...entry, price: event.target.value } : entry) }))} className="w-24 rounded-lg border border-line px-2 py-1 text-sm" />
                     <button type="button" className="text-sm text-brand hover:underline" onClick={() => addSeat(section, row)}>Add seat</button>
                     <button type="button" className="text-sm text-muted hover:underline" disabled={protectedRow} onClick={() => removeRow(section, row)}>Remove row</button>
                   </div>
@@ -409,8 +588,11 @@ export function SeatDesigner({ eventId, initialLayout, action }) {
                 <button type="button" className="rounded-lg border border-line px-4 py-2 text-sm" onClick={() => addRow(section)}>Add row</button>
                 <button type="button" className="rounded-lg border border-line px-4 py-2 text-sm" onClick={() => removeSection(section)}>Remove section</button>
               </div>
+                </>
+              )}
             </section>
-          ))}
+            );
+          })}
           {currentSeat ? (
             <div className="rounded-2xl border border-line bg-card p-4">
               <h2 className="text-lg font-semibold">Selected seat {currentSeat.label}</h2>
@@ -446,10 +628,19 @@ export function SeatDesigner({ eventId, initialLayout, action }) {
           return;
         }
         field.value = JSON.stringify(result.value);
+        setError("");
+        setSaving(true);
       }}>
         <input type="hidden" name="eventId" value={eventId} />
         <input type="hidden" name="layout" value={layoutJson} />
-        <button type="submit" className={buttonClass}>Save layout</button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button type="submit" className={buttonClass} disabled={saving}>
+            {saving ? "Saving..." : "Save layout"}
+          </button>
+          <span className="text-sm text-muted">
+            {seatTotal} seat{seatTotal === 1 ? "" : "s"} will be saved for this event.
+          </span>
+        </div>
       </form>
     </div>
   );

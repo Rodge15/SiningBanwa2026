@@ -322,5 +322,58 @@ export async function updateEventStatus(formData) {
         ? "Event cancelled. The record was kept, and guests can no longer open it."
         : `Event marked ${status}.`;
 
-  succeed(path, note);
+  succeed(status === "published" ? "/events/manage" : path, note);
+}
+
+function isMissingTable(error) {
+  const message = String(error?.message || "");
+  return (
+    error?.code === "42P01" ||
+    error?.code === "PGRST205" ||
+    error?.code === "PGRST202" ||
+    /does not exist|could not find the table|schema cache/i.test(message)
+  );
+}
+
+// Child tables are deleted first because every foreign key to an event is
+// ON DELETE RESTRICT. showings and showing_seats clear automatically (cascade).
+const EVENT_CHILD_TABLES = ["payments", "reservation_items", "reservations", "event_seats", "event_rows", "event_sections"];
+
+export async function deleteEvent(formData) {
+  const id = String(formData.get("id") || "");
+  const path = "/events/manage";
+  await requireManager(path);
+
+  if (!isUuid(id)) {
+    fail(path, "That event could not be found.");
+  }
+
+  let admin;
+
+  try {
+    admin = createAdminClient();
+  } catch {
+    fail(path, "Deleting an event needs the service role key in .env.local on the server.");
+  }
+
+  for (const table of EVENT_CHILD_TABLES) {
+    const { error } = await admin.from(table).delete().eq("event_id", id);
+
+    if (error && !isMissingTable(error)) {
+      fail(
+        path,
+        error.message && error.message.length < 300
+          ? `The event could not be deleted while clearing ${table.replace(/_/g, " ")}: ${error.message}`
+          : "The event could not be deleted.",
+      );
+    }
+  }
+
+  const { error } = await admin.from("events").delete().eq("id", id);
+
+  if (error) {
+    fail(path, error.message && error.message.length < 300 ? `The event could not be deleted: ${error.message}` : "The event could not be deleted.");
+  }
+
+  succeed(path, "Event deleted.");
 }

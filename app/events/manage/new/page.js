@@ -14,7 +14,7 @@ async function NewEventForm({ searchParams }) {
   await requireRole(EVENT_MANAGER_ROLES);
 
   return (
-    <section className="mx-auto max-w-2xl rounded-2xl border border-line bg-card p-6 shadow-sm">
+    <section className="rounded-2xl border border-line bg-card p-6 shadow-sm sm:p-8">
       <h1 className="text-2xl font-semibold">New event</h1>
       <p className="mt-2 text-sm leading-6 text-muted">
         This saves a draft. Set the run dates and the showtimes for each day. Guests cannot see it until you publish it. A seated event also needs a saved seat layout.
@@ -32,8 +32,11 @@ async function NewEventForm({ searchParams }) {
 export default function NewEventPage({ searchParams }) {
   return (
     <section className="space-y-4">
-      <Link href="/events/manage" className="text-sm text-brand hover:underline">
-        Back to managed events
+      <Link
+        href="/events/manage"
+        className="inline-flex w-fit items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-muted transition hover:border-brand hover:text-brand"
+      >
+        <span aria-hidden="true">&larr;</span> Back to managed events
       </Link>
       <Suspense fallback={<p className="text-sm text-muted">Checking event access...</p>}>
         <NewEventForm searchParams={searchParams} />
